@@ -32,13 +32,16 @@ public class Input_Manager_Controller : MonoBehaviour
         {
             Debug.LogWarning("canvasGameObject reference is not set in the inspector.");
         }
-        
+
+        cultureWindow = GameObject.Find("Cultures_Window");
+        mainCanvas = GameObject.Find("Main_Canvas");
+        cultureWindow.SetActive(false);
     }
     //TODO integrate turn system
     //TODO right-click drag window
 
 
-    private bool togglFoodProduction = false; 
+    private bool togglFoodProduction = false;
     private Controller displayController;
     private static Input_Manager_State currentState = Input_Manager_State.No_Input_Load;   //ENUM that contains all unity layers
     public TextMeshProUGUI GameStateInfoText; //TOP RIGHT 
@@ -98,29 +101,29 @@ public class Input_Manager_Controller : MonoBehaviour
     }
 
 
-private GameObject CustomOrder(GameObject[] objects)
-{
-    // Priority: unit > settlement > tile > other
-    foreach (var obj in objects)
+    private GameObject CustomOrder(GameObject[] objects)
     {
-        if (obj.TryGetComponent<Game_Entity_Component>(out _))
-            return obj;
+        // Priority: unit > settlement > tile > other
+        foreach (var obj in objects)
+        {
+            if (obj.TryGetComponent<Game_Entity_Component>(out _))
+                return obj;
+        }
+        foreach (var obj in objects)
+        {
+            if (obj.TryGetComponent<Settlement_Component>(out _))
+                return obj;
+        }
+        foreach (var obj in objects)
+        {
+            if (obj.TryGetComponent<HexTileComponent>(out _))
+                return obj;
+        }
+        Debug.LogWarning("No valid GameObject found in CustomOrder.");
+        if (objects.Length > 0)
+            return objects[0];
+        return null;
     }
-    foreach (var obj in objects)
-    {
-        if (obj.TryGetComponent<Settlement_Component>(out _))
-            return obj;
-    }
-    foreach (var obj in objects)
-    {
-        if (obj.TryGetComponent<HexTileComponent>(out _))
-            return obj;
-    }
-    Debug.LogWarning("No valid GameObject found in CustomOrder.");
-    if (objects.Length > 0)
-        return objects[0];
-    return null;
-}
 
     //the player has right-clicked
     void DoOtherStuff()
@@ -190,8 +193,8 @@ private GameObject CustomOrder(GameObject[] objects)
                 //The clicked GameObject has a unit attached -> unit should be moved //TODO other actions
                 if (script is Game_Entity_Component gameEntityComp)
                 {//check what type the game_entitiy is
-                    Debug.Log("Game Entity type: " + gameEntityComp.game_Entity.type);
-                    //gameEntityComp.game_Entity.move();
+                    //Debug.Log("Game Entity type: " + gameEntityComp.game_Entity.type);
+                    gameEntityComp.game_Entity.move_starter(); //moves the unit from the footstep function
                     Clear_all_Footsteps(); // Clear all footsteps after moving
                     SetGameState(Input_Manager_State.Base_Tile_Layer);
                 }
@@ -199,11 +202,10 @@ private GameObject CustomOrder(GameObject[] objects)
         }
         else if (currentState == Input_Manager_State.Game_Entity_Layer)
         {
-        }//...
+        }
     }
 
-    private GenerateFoodProd foodProdGenerator; //Sone in Awake
-    
+    private GenerateFoodProd foodProdGenerator; //Done in Awake
     public void ToggleFoodProduction()
     {
         if (togglFoodProduction == false)
@@ -215,11 +217,13 @@ private GameObject CustomOrder(GameObject[] objects)
 
     private void Clear_all_Footsteps()
     {
+
         if (displayController != null && displayController.movables != null)
         {
-            displayController.movables = displayController.movables
-                .Where(e => !(e is Footsteps))
-                .ToArray();
+            displayController.movables
+                .Where(e => (e is Footsteps))
+                .ToList()
+                .ForEach(e => displayController.AddEntity_toremove(e));
         }
     }
     public void SetGameState(Input_Manager_State newState)
@@ -280,6 +284,9 @@ private GameObject CustomOrder(GameObject[] objects)
         return currentState;
     }
 
+    private GameObject cultureWindow;private GameObject mainCanvas; //Set in the Awake function
+    public void OpenCultureWindow(){SetGameState(Input_Manager_State.Cultures_Window);cultureWindow.SetActive(true);mainCanvas.SetActive(false);}public void CloseCultureWindow(){SetGameState(Input_Manager_State.Base_Tile_Layer);cultureWindow.SetActive(false);mainCanvas.SetActive(true);}
+
 }
 
 public enum Input_Manager_State //Different Scenes?
@@ -295,6 +302,7 @@ public enum Input_Manager_State //Different Scenes?
     Character_Selection,
     Campaign_Manager,
     Battle,
-    No_Input_Load
+    No_Input_Load,
+    Cultures_Window
 }   
         

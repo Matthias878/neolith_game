@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+//something does not work as intended
+
 namespace NeolithianRev.Utility
 {
     public static class MovementAlgos
@@ -18,17 +20,24 @@ namespace NeolithianRev.Utility
             queue.Enqueue((startPos, movePoints));
             visited[startPos] = movePoints;
 
-            // Hex grid directions (pointy top, even-q offset)
-            Vector2Int[] directions = new Vector2Int[]
+            // Flat-topped hex grid directions (even-q offset)
+            Vector2Int[] evenDirections = new Vector2Int[]
             {
                 new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(+1, -1), new Vector2Int(-1, +1)
+                new Vector2Int(-1, +1), new Vector2Int(-1, -1)
+            };
+            Vector2Int[] oddDirections = new Vector2Int[]
+            {
+                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
+                new Vector2Int(0, +1), new Vector2Int(0, -1),
+                new Vector2Int(+1, +1), new Vector2Int(+1, -1)
             };
 
             while (queue.Count > 0)
             {
                 var (current, remaining) = queue.Dequeue();
+                var directions = (current.y % 2 == 0) ? evenDirections : oddDirections;
                 foreach (var dir in directions)
                 {
                     int nx = current.x + dir.x;
@@ -69,11 +78,18 @@ namespace NeolithianRev.Utility
             queue.Enqueue((startPos, movePoints));
             visited[startPos] = movePoints;
 
-            Vector2Int[] directions = new Vector2Int[]
+            // Flat-topped hex grid directions (even-q offset)
+            Vector2Int[] evenDirections = new Vector2Int[]
             {
                 new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(+1, -1), new Vector2Int(-1, +1)
+                new Vector2Int(-1, +1), new Vector2Int(-1, -1)
+            };
+            Vector2Int[] oddDirections = new Vector2Int[]
+            {
+                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
+                new Vector2Int(0, +1), new Vector2Int(0, -1),
+                new Vector2Int(+1, +1), new Vector2Int(+1, -1)
             };
 
             while (queue.Count > 0)
@@ -93,6 +109,7 @@ namespace NeolithianRev.Utility
                     path.Reverse();
                     return path;
                 }
+                var directions = (current.y % 2 == 0) ? evenDirections : oddDirections;
                 foreach (var dir in directions)
                 {
                     int nx = current.x + dir.x;
