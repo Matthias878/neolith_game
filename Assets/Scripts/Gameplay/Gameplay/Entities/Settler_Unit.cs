@@ -1,28 +1,51 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 public class Settler_Unit : Game_Entity
 {
+    private int movePoints;
+    protected int health;
     private int maxMovePoints = 2; // Default move points for a settler
-    public Settler_Unit(string name, int x, int y) : base(1, name, x, y)
+    public Settler_Unit(int x, int y) : base(1, x, y)
     {
         this.movePoints = 2;
         this.health = 100;
     }
 
-    public override void presentActions()
+    public override void presentActions_and_Data()
     {
-        //present users or do AI
-        //return the fact move was called
-        //build settlement()
+
+        Button newButton = Controller_GameData.inputManagerController.addUIButton();
+        newButton.GetComponentInChildren<TMP_Text>().text = "Click this button to found a new settlement.";
+        newButton.onClick.AddListener(() => foundSettlement());
+
+        
+        Button newButtontwo = Controller_GameData.inputManagerController.addUIButton();
+        newButtontwo.GetComponentInChildren<TMP_Text>().text = "fortify here.";
+        newButtontwo.onClick.AddListener(() => fortify());
+
     }
 
-    public override void move()
+    private void foundSettlement()
     {
-        GameObject holder = GameObject.Find("Script_Holder_Ingame");
-        Display_Controller display = holder.GetComponent<Display_Controller>();
+        //logic
+        Controller_GameData.add_Settlement(new Settlement(x, y));
+        //change into city management
+        Controller_GameData.inputManagerController.SetGameState(Input_Manager_State.Settlement_Management_Layer);
+    }
+
+    private void fortify()
+    {
+        Controller_GameData.inputManagerController.SetGameState(Input_Manager_State.Settlement_Management_Layer);
+        Debug.Log("Fortifying at position: " + x + ", " + y);
+    }
+
+    public override void move_starter()
+    {
 
         HashSet<Vector2Int> reachableTiles = NeolithianRev.Utility.MovementAlgos.GetReachableTiles(
-            ConvertToTileTypeArray_helper(display.GameMap),
+            ConvertToTileTypeArray_helper(Controller_GameData.GameMap),
             new Vector2Int(x, y),
             movePoints,
             Entity_Stats.Settler_Movement_Costs
@@ -31,7 +54,7 @@ public class Settler_Unit : Game_Entity
         Debug.Log("current Movepoints are: " + movePoints + " Reachable positions: " + positions);
         foreach (var tile in reachableTiles)
         {
-            display.add_Entity(new Footsteps(tile.x, tile.y, this));
+            Controller_GameData.add_Entity(new Footsteps(tile.x, tile.y, this));
         }
         // Here you can implement logic to present reachable tiles to the player
 
@@ -42,15 +65,13 @@ public class Settler_Unit : Game_Entity
         movePoints = maxMovePoints; // Reset move points at the end of the turn
     }
 
-    public override void move(Vector2Int endpos)
+    public override void move_to(Vector2Int endpos)
     {
         Debug.Log("Moving from " + x + y + " to " + endpos);
         //gamemap from dispay, startpos is x and y only give endpos
-        GameObject holder = GameObject.Find("Script_Holder_Ingame");
-        Display_Controller display = holder.GetComponent<Display_Controller>();
 
         List<Vector2Int> path = NeolithianRev.Utility.MovementAlgos.GetPath(
-            ConvertToTileTypeArray_helper(display.GameMap),
+            ConvertToTileTypeArray_helper(Controller_GameData.GameMap),
             new Vector2Int(x, y),
             endpos,
             movePoints,
@@ -61,7 +82,7 @@ public class Settler_Unit : Game_Entity
         {
             // Here you can implement logic to animate path
             int totalCost = 0;
-            TileType[][] tileTypeMap = ConvertToTileTypeArray_helper(display.GameMap);
+            TileType[][] tileTypeMap = ConvertToTileTypeArray_helper(Controller_GameData.GameMap);
             for (int i = 1; i < path.Count; i++) // skip start tile
             {
                 Vector2Int pos = path[i];
@@ -77,8 +98,8 @@ public class Settler_Unit : Game_Entity
             y = finalPos.y;
             movePoints -= totalCost;
             if (movePoints < 0) movePoints = 0;
-            display.remove_Entity(this);
-            display.add_Entity(this);
+            Controller_GameData.remove_Entity(this);
+            Controller_GameData.add_Entity(this);
         }
         else
         {
@@ -86,7 +107,7 @@ public class Settler_Unit : Game_Entity
         }
     }
 
-    private static TileType[][] ConvertToTileTypeArray_helper(HexTile_Tnfo[][] hexMap)
+    private static TileType[][] ConvertToTileTypeArray_helper(HexTile_Info[][] hexMap)
     {
         int width = hexMap.Length;
         TileType[][] result = new TileType[width][];

@@ -4,11 +4,11 @@ public class My_TilemapRenderer : MonoBehaviour
 {
     public Transform tileParent;
     public float tileWidth = 1f;
-    public float tileHeight = 0.866f; // flat-top hexes
+    public float tileHeight = 0.866f; // flat-top hexes  //Is used elswhere to calculate worldpos from x and y !
 
-    public void RenderMap(HexTile_Tnfo[][] gameMap, Game_Entity[] movables)
+    public void RenderMap(HexTile_Info[][] gameMap, Game_Entity[] movables, Settlement[] settlements = null)
     {
-        // Clear previous tiles + units
+        // Clear previous tiles + units + settlements
         foreach (Transform child in tileParent)
         {
             Destroy(child.gameObject);
@@ -18,8 +18,8 @@ public class My_TilemapRenderer : MonoBehaviour
         {
             for (int x = 0; x < gameMap[y].Length; x++)
             {
-                HexTile_Tnfo tile = gameMap[y][x];
-                if (tile == null) continue; // only create if not null
+                HexTile_Info tile = gameMap[y][x];
+                if (tile == null) continue;
 
                 string spriteName = tile.type.ToString();
                 Sprite sprite = Resources.Load<Sprite>("Sprites/" + spriteName);
@@ -30,14 +30,14 @@ public class My_TilemapRenderer : MonoBehaviour
                 }
 
                 // Create Tile GameObject
-                GameObject go = new GameObject($"Tile_{x}_{y}");
+                GameObject go = new GameObject($"Tile_X_Coord_is{x}_AND_Y_Coord_is{y}");
                 go.transform.parent = tileParent;
                 go.layer = LayerMask.NameToLayer("Base_Tile_Layer");
                 var sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = sprite;
-                sr.sortingOrder = 0; // tiles always under entities
+                sr.sortingOrder = 0;
 
-                // Scale sprite to match tile dimensions
+                // Scale sprite
                 var bounds = sprite.bounds.size;
                 float scaleX = tileWidth / bounds.x;
                 float scaleY = tileHeight / bounds.y;
@@ -48,7 +48,7 @@ public class My_TilemapRenderer : MonoBehaviour
                 float yOffset = tileHeight * y + (x % 2 == 0 ? 0 : tileHeight / 2f);
                 go.transform.localPosition = new Vector3(xOffset, yOffset, 0);
 
-                // Add BoxCollider2D
+                // Add collider
                 var collider = go.AddComponent<BoxCollider2D>();
                 collider.isTrigger = false;
                 collider.size = sprite.bounds.size;
@@ -63,11 +63,21 @@ public class My_TilemapRenderer : MonoBehaviour
                 {
                     foreach (var entity in movables)
                     {
-                        if (entity == null) continue;
-                        if (entity.x == x && entity.y == y)
+                        if (entity != null && entity.x == x && entity.y == y)
                         {
-                            // Use entity.type to pick correct sprite
                             CreateEntity(entity, entity.type, x, y, xOffset, yOffset, go.transform.localScale);
+                        }
+                    }
+                }
+
+                // Render settlements
+                if (settlements != null)
+                {
+                    foreach (var settlement in settlements)
+                    {
+                        if (settlement != null && settlement.x == x && settlement.y == y)
+                        {
+                            CreateSettlement(settlement, x, y, xOffset, yOffset, go.transform.localScale);
                         }
                     }
                 }
@@ -87,8 +97,8 @@ public class My_TilemapRenderer : MonoBehaviour
 
         GameObject entityGO = new GameObject($"{spriteName}_{x}_{y}");
         entityGO.transform.parent = tileParent;
+        
 
-        // Footsteps get their own layer
         if (entity.type == "Footsteps")
             entityGO.layer = LayerMask.NameToLayer("Unit_Movement_Layer");
         else
@@ -96,9 +106,9 @@ public class My_TilemapRenderer : MonoBehaviour
 
         var sr = entityGO.AddComponent<SpriteRenderer>();
         sr.sprite = entitySprite;
-        sr.sortingOrder = 1; // entities always above tiles
+        sr.sortingOrder = 2; //only relevant for rendering not clicking i e colliders
         entityGO.transform.localScale = scale;
-        entityGO.transform.localPosition = new Vector3(xOffset, yOffset, 0);
+        entityGO.transform.localPosition = new Vector3(xOffset, yOffset, 0f);
 
         var collider = entityGO.AddComponent<BoxCollider2D>();
         collider.isTrigger = false;
@@ -108,14 +118,48 @@ public class My_TilemapRenderer : MonoBehaviour
         var gameEntityComp = entityGO.AddComponent<Game_Entity_Component>();
         gameEntityComp.game_Entity = entity;
     }
+
+    private void CreateSettlement(Settlement settlement, int x, int y,
+                                  float xOffset, float yOffset, Vector3 scale)
+    {
+        Sprite settlementSprite = Resources.Load<Sprite>("Sprites/" + settlement.type);
+        if (settlementSprite == null)
+        {
+            Debug.LogWarning($"Failed to load settlement sprite: {settlement.type} at ({x},{y})");
+            return;
+        }
+
+        GameObject settlementGO = new GameObject($"Settlement_{x}_{y}");
+        settlementGO.transform.parent = tileParent;
+        settlementGO.layer = LayerMask.NameToLayer("Base_Tile_Layer");
+
+        var sr = settlementGO.AddComponent<SpriteRenderer>();
+        sr.sprite = settlementSprite;
+        sr.sortingOrder = 1; // above units
+        settlementGO.transform.localScale = scale;
+        settlementGO.transform.localPosition = new Vector3(xOffset, yOffset, 0);
+
+        var collider = settlementGO.AddComponent<BoxCollider2D>();
+        collider.isTrigger = false;
+        collider.size = settlementSprite.bounds.size;
+        collider.offset = settlementSprite.bounds.center;
+
+        var settlementComp = settlementGO.AddComponent<Settlement_Component>();
+        settlementComp.settlement = settlement;
+    }
 }
 
 public class HexTileComponent : MonoBehaviour
 {
-    public HexTile_Tnfo hexTileInfo;
+    public HexTile_Info hexTileInfo;
 }
 
 public class Game_Entity_Component : MonoBehaviour
 {
     public Game_Entity game_Entity;
+}
+
+public class Settlement_Component : MonoBehaviour
+{
+    public Settlement settlement;
 }

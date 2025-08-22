@@ -4,8 +4,9 @@ using TMPro;
 using UnityEngine.SceneManagement;
 
 
-//SOMEHOW ONLY WORKS IF NEVER CHANGEs SCENE AFTER ATTACHING
-public class TestHover : MonoBehaviour
+//SOMEHOW ONLY WORKS IF NEVER CHANGEs SCENE AFTER ATTACHING Fixed
+//does not work if units /settlements on tile
+public class Hover_Overview : MonoBehaviour
 {
     public TextMeshProUGUI infoText;
     private Camera cam; //Camera is on movable on x,y plane with z = 10 (ratation is x= 0 y= 180 z= 0) projection is orthographic with size changable by scrolling
@@ -35,7 +36,7 @@ public class TestHover : MonoBehaviour
             HexTileComponent hexComp = hit.collider.GetComponent<HexTileComponent>();
             if (hexComp != null)
             {
-                HexTile_Tnfo info = hexComp.hexTileInfo;
+                HexTile_Info info = hexComp.hexTileInfo;
                 infoText.text = info.ToString();
                 //Debug.Log($"Hovering over tile: {info}");
             }

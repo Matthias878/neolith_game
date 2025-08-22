@@ -6,7 +6,7 @@ public class Turn_System : MonoBehaviour
     public TextMeshProUGUI turnbuttontext;
     private int currentTurn = 1;
 
-    public Display_Controller displayController;
+    public Controller displayController;
 
     public void EndTurn()
     {
