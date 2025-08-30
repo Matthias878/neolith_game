@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 //something does not work as intended
 
@@ -9,10 +10,10 @@ namespace NeolithianRev.Utility
     {
         // Returns all reachable positions from startPos within movePoints, considering movement costs per tile
         public static HashSet<Vector2Int> GetReachableTiles(
-            TileType[][] map,
+            Terrain[][] map,
             Vector2Int startPos,
             int movePoints,
-            Dictionary<TileType, int> moveCosts)
+            Dictionary<Terrain, int> moveCosts)
         {
             int width = map.Length;
             var visited = new Dictionary<Vector2Int, int>(); // Position -> remaining movePoints
@@ -23,21 +24,21 @@ namespace NeolithianRev.Utility
             // Flat-topped hex grid directions (even-q offset)
             Vector2Int[] evenDirections = new Vector2Int[]
             {
-                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(-1, +1), new Vector2Int(-1, -1)
+                new Vector2Int(-1, 0), new Vector2Int(+1, 0),
+                new Vector2Int(-1, -1), new Vector2Int(+1, -1)
             };
             Vector2Int[] oddDirections = new Vector2Int[]
             {
-                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(+1, +1), new Vector2Int(+1, -1)
+                new Vector2Int(-1, 0), new Vector2Int(+1, 0),
+                new Vector2Int(-1, +1), new Vector2Int(+1, +1)
             };
 
             while (queue.Count > 0)
             {
                 var (current, remaining) = queue.Dequeue();
-                var directions = (current.y % 2 == 0) ? evenDirections : oddDirections;
+                var directions = (current.x % 2 == 0) ? evenDirections : oddDirections;
                 foreach (var dir in directions)
                 {
                     int nx = current.x + dir.x;
@@ -47,7 +48,7 @@ namespace NeolithianRev.Utility
                     if (ny < 0 || ny >= map[nx].Length)
                         continue;
                     var next = new Vector2Int(nx, ny);
-                    TileType tile = map[nx][ny];
+                    Terrain tile = map[nx][ny];
                     if (!moveCosts.TryGetValue(tile, out int cost))
                         continue; // Impassable or undefined
                     int newRemaining = remaining - cost;
@@ -65,11 +66,11 @@ namespace NeolithianRev.Utility
 
         // Returns the shortest path from startPos to endPos within movePoints, or null if unreachable
         public static List<Vector2Int> GetPath(
-            TileType[][] map,
+            Terrain[][] map,
             Vector2Int startPos,
             Vector2Int endPos,
             int movePoints,
-            Dictionary<TileType, int> moveCosts)
+            Dictionary<Terrain, int> moveCosts)
         {
             int width = map.Length;
             var visited = new Dictionary<Vector2Int, int>(); // Position -> remaining movePoints
@@ -81,16 +82,17 @@ namespace NeolithianRev.Utility
             // Flat-topped hex grid directions (even-q offset)
             Vector2Int[] evenDirections = new Vector2Int[]
             {
-                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(-1, +1), new Vector2Int(-1, -1)
+                new Vector2Int(-1, 0), new Vector2Int(+1, 0),
+                new Vector2Int(-1, -1), new Vector2Int(+1, -1)
             };
             Vector2Int[] oddDirections = new Vector2Int[]
             {
-                new Vector2Int(+1, 0), new Vector2Int(-1, 0),
                 new Vector2Int(0, +1), new Vector2Int(0, -1),
-                new Vector2Int(+1, +1), new Vector2Int(+1, -1)
+                new Vector2Int(-1, 0), new Vector2Int(+1, 0),
+                new Vector2Int(-1, +1), new Vector2Int(+1, +1)
             };
+
 
             while (queue.Count > 0)
             {
@@ -109,7 +111,7 @@ namespace NeolithianRev.Utility
                     path.Reverse();
                     return path;
                 }
-                var directions = (current.y % 2 == 0) ? evenDirections : oddDirections;
+                var directions = (current.x % 2 == 0) ? evenDirections : oddDirections;
                 foreach (var dir in directions)
                 {
                     int nx = current.x + dir.x;
@@ -119,7 +121,7 @@ namespace NeolithianRev.Utility
                     if (ny < 0 || ny >= map[nx].Length)
                         continue;
                     var next = new Vector2Int(nx, ny);
-                    TileType tile = map[nx][ny];
+                    Terrain tile = map[nx][ny];
                     if (!moveCosts.TryGetValue(tile, out int cost))
                         continue;
                     int newRemaining = remaining - cost;
@@ -134,5 +136,142 @@ namespace NeolithianRev.Utility
             }
             return null; // No path found
         }
+
+
+    //Finds the cheapest path between any two points
+    public static List<(Vector2Int, int)> GetCheapestPath(Vector2Int startPos, Vector2Int endPos, GoodsType goods)
+    {
+    // Dijkstra over even-q offset coords (flat-top hexes)
+    // gScore holds total cost from start to this node (sum of per-tile entry costs)
+    var gScore = new Dictionary<Vector2Int, int> { [startPos] = 0 };
+    var cameFrom = new Dictionary<Vector2Int, Vector2Int>();
+    var stepCost = new Dictionary<Vector2Int, int> { [startPos] = 0 };
+
+    // Poor man's priority queue: (node, gScore). For typical map sizes it's fine.
+    var open = new List<Vector2Int> { startPos };
+
+    // Neighbor directions (even-q)
+    static IEnumerable<Vector2Int> Neighbors(Vector2Int p)
+    {
+        // x is the column (q), y is the row (r). Matches the other functions.
+        if ((p.x & 1) == 0)
+        {
+            yield return new Vector2Int(p.x + 0, p.y + 1);
+            yield return new Vector2Int(p.x + 0, p.y - 1);
+            yield return new Vector2Int(p.x - 1, p.y + 0);
+            yield return new Vector2Int(p.x + 1, p.y + 0);
+            yield return new Vector2Int(p.x - 1, p.y - 1);
+            yield return new Vector2Int(p.x + 1, p.y - 1);
+        }
+        else
+        {
+            yield return new Vector2Int(p.x + 0, p.y + 1);
+            yield return new Vector2Int(p.x + 0, p.y - 1);
+            yield return new Vector2Int(p.x - 1, p.y + 0);
+            yield return new Vector2Int(p.x + 1, p.y + 0);
+            yield return new Vector2Int(p.x - 1, p.y + 1);
+            yield return new Vector2Int(p.x + 1, p.y + 1);
+        }
     }
+
+    int PopMin(List<Vector2Int> list)
+    {
+        int bestIdx = 0;
+        int bestScore = gScore[list[0]];
+        for (int i = 1; i < list.Count; i++)
+        {
+            int s = gScore[list[i]];
+            if (s < bestScore)
+            {
+                bestScore = s;
+                bestIdx = i;
+            }
+        }
+        var node = list[bestIdx];
+        list.RemoveAt(bestIdx);
+        return bestIdx >= 0 ? 0 : 0; // no-op to keep analyzer quiet
+    }
+
+    // Pop with min gScore
+    Vector2Int PopMinNode(List<Vector2Int> list)
+    {
+        int bestIdx = 0;
+        int bestScore = gScore[list[0]];
+        for (int i = 1; i < list.Count; i++)
+        {
+            int s = gScore[list[i]];
+            if (s < bestScore)
+            {
+                bestScore = s;
+                bestIdx = i;
+            }
+        }
+        var node = list[bestIdx];
+        list.RemoveAt(bestIdx);
+        return node;
+    }
+
+    // Dijkstra loop
+    while (open.Count > 0)
+    {
+        var current = PopMinNode(open);
+        if (current == endPos)
+        {
+            // Reconstruct path of (position, costToEnterThatTile)
+            var path = new List<(Vector2Int, int)>();
+            var step = endPos;
+            while (!step.Equals(startPos))
+            {
+                path.Add((step, stepCost[step]));
+                step = cameFrom[step];
+            }
+            path.Add((startPos, 0));
+            path.Reverse();
+            return path;
+        }
+
+        foreach (var nb in Neighbors(current))
+        {
+            // Cost to enter neighbor; use default(GoodsType) since signature provides it
+            int enterCost = transportCosts(nb, goods);
+
+            // Treat non-positive or very large as impassable
+            if (enterCost <= 0 || enterCost >= int.MaxValue / 4)
+                continue;
+
+            int tentative = gScore[current] + enterCost;
+
+            if (!gScore.TryGetValue(nb, out int existing) || tentative < existing)
+            {
+                gScore[nb] = tentative;
+                cameFrom[nb] = current;
+                stepCost[nb] = enterCost;
+
+                // push if not already in open
+                bool inOpen = false;
+                for (int i = 0; i < open.Count; i++)
+                    if (open[i] == nb) { inOpen = true; break; }
+                if (!inOpen) open.Add(nb);
+            }
+        }
+    }
+
+    // No path
+    return null;
+}
+
+
+    private static int transportCosts(Vector2Int position, GoodsType goods)
+        {
+            //TODO later include streets, tolls?, enemy terrain and ?maula? routes
+            //TODO return If your transportCosts can see impassable tiles, return int.MaxValue (or <=0) for those.
+            //TODO tell player how it was calculated
+            //profit of traders?
+            if (position.x < 0 || position.x >= Controller.GameMap.Length || position.y < 0 || position.y >= Controller.GameMap[position.x].Length || Controller.GameMap[position.x][position.y] == null)
+                return int.MaxValue;
+
+            return (int)Math.Ceiling(((float)Controller.GameMap[position.x][position.y].roughness) * Entity_Stats.Goods_Movement_Costs_Factor.GetValueOrDefault(goods, 1.0f));
+        }
+    }
+
 }

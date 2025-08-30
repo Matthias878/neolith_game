@@ -44,6 +44,10 @@
 //everyone has access to Fire already
 
 
+//Start with climate changing
+
+//great events: massive vulcaninc erruptions, invasion of the seavolks
+
 
 
 

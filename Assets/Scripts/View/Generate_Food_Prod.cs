@@ -7,22 +7,22 @@ public class GenerateFoodProd : MonoBehaviour
 { 
     // No longer using TextMeshProUGUI, will create TextMeshPro objects in world space
     private GameObject[] show_food = new GameObject[0];
+    private float tileWidth = 1f; //from my_tilemaprenderer
+    private float tileHeight = 0.866f;
 
     public void Show_food_prod_on_map(Controller controller)
     {
-        HexTile_Info[][] map = controller.GameMap;
+        HexTile_Info[][] map = Controller.GameMap;
 
-        for (int y = 0; y < map.Length; y++)
+        for (int x = 0; x < map.Length; x++)
         {
-            for (int x = 0; x < map[y].Length; x++)
+            for (int y = 0; y < map[x].Length; y++)
             {
-                float tileWidth = 1f; //from my_tilemaprenderer
-                float tileHeight = 0.866f;
                 // Create a new GameObject for the text
                 GameObject textObj = new GameObject($"FoodText_{x}_{y}");
                 textObj.transform.parent = this.transform;
                 TextMeshPro tmp = textObj.AddComponent<TextMeshPro>();
-                int va = Settlement.calculateFoodProduction_helper(map[y][x]);
+                int va = Settlement.FoodProduction(map[x][y]);
                 tmp.text = $"{va}";
                 tmp.fontSize = 2;
                 int minval = 8;
@@ -44,9 +44,9 @@ public class GenerateFoodProd : MonoBehaviour
                 tmp.sortingOrder = 10; // Ensure it's visible above sprites
                 float xOffset = tileWidth * 0.75f * x;
                 float yOffset = tileHeight * y + (x % 2 == 0 ? 0 : tileHeight / 2f);
-                textObj.transform.position = new Vector3(xOffset, yOffset, 0f);
-                // Rotate 180 degrees around Y so text faces the camera
-                textObj.transform.rotation = Quaternion.Euler(0, 180, 0);
+                textObj.transform.localPosition = new Vector3(xOffset, yOffset, 0f);
+
+                //add object to array to remove later
                 Array.Resize(ref show_food, show_food.Length + 1);
                 show_food[show_food.Length - 1] = textObj;
             }

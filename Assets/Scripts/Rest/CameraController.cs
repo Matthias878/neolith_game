@@ -22,7 +22,7 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    void Update()
+    void Update()//TODO change scroll speed based on zoom level
     {
         // WASD and Arrow Key Movement using new Input System
         moveInput = Vector2.zero;
@@ -33,9 +33,9 @@ public class CameraController : MonoBehaviour
             if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
                 moveInput.y -= 1;
             if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
-                moveInput.x += 1;
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
                 moveInput.x -= 1;
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                moveInput.x += 1;
         }
     Vector3 move = new Vector3(moveInput.x, moveInput.y, 0f).normalized;
     float scaledSpeed = moveSpeed * cam.orthographicSize / 5f; // 5f is your default zoom

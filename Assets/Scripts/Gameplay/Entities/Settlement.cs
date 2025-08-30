@@ -1,15 +1,20 @@
 using UnityEngine.UI;
+using UnityEngine;
 using TMPro;
 using System.Linq;
 using System.Collections.Generic;
 public class Settlement : Game_Entity
 {
-
-    public Settlement(int x, int y) : base(4, x, y)
+    //only public for json, should never be called from outside class otherwise
+    public Settlement(int x, int y, Person leader) : base(4, x, y, leader)
     {
+        this.foodstoredcurrently = 100;
+        this.maxfoodStorable = 1000; //TODO make dependend on size and buildings
     }
 
     private int foodProducedeachTurn;
+
+    private List<Pop> inhabitants = new List<Pop>();
 
     private int foodConsumedeachTurn;
 
@@ -19,42 +24,82 @@ public class Settlement : Game_Entity
 
     private int foodstoredcurrently;
 
+    public static void foundSettlement(int x, int y, Person leader)
+    {
+        var s = new Settlement(x, y, leader);
+        var p = new Pop(x, y, leader);
+        s.inhabitants.Add(p);
+        Controller_GameData.AddEntity(s);
+        Controller_GameData.AddEntity(p);
+    }
+
     private int influenceRange = 2;
 
     public override void presentActions_and_Data()
     {
-        TextMeshProUGUI myUItext = Controller_GameData.inputManagerController.addUIText();
-        foodProducedeachTurn = calculateFoodProduction();
-        myUItext.text = "This turn the settlement is producing " + foodProducedeachTurn + " food.";
-        
+        //Show food production
         TextMeshProUGUI Ressource_UI = Controller_GameData.inputManagerController.addUIText();
-        List<(Ressourcen, int)> resources = giveResources();
         Ressource_UI.text = "";
-        foreach (var resource in resources)
+        Ressource_UI.text += "This settlement is at x:" + x + " y:" + y + ".\n";
+        Ressource_UI.text += "This turn the settlement is producing " + totalFoodProduction() + " food.\n";
+
+        //show ressource production + hood type
+        List<(GoodsType, int)> allressources = new List<(GoodsType, int)>();
+        foreach (var resourceOwn in totalGoodProductions(this))
         {
-            Ressource_UI.text += "This settlement is able to produce " + resource.Item1 + " at a cost of " + resource.Item2 + ".\n";
+            Ressource_UI.text += "This settlement is able to produce " + resourceOwn.Item1 + " at a cost of " + resourceOwn.Item2 + ".\n";
+            allressources.Add(resourceOwn);
         }
-            Ressource_UI.text += getHoodstype(resources);
+        //show ressource import
+        foreach (var settlement in Controller.movables)
+        {
+            if (settlement is Settlement s && s != this)
+            {
+                List<(GoodsType, int)> exportableResources = s.productionExportTo(this);
+                foreach (var resourceImp in exportableResources)
+                {
+                    Ressource_UI.text += "This settlement is able to import " + resourceImp.Item1 + " from the settlement at x:" + s.x + " y:" + s.y + " at a cost of " + resourceImp.Item2 + ".\n";
+                    allressources.Add(resourceImp);
+                }
+            }
+        }
+
+        //show settlement size
+        int size = 0;
+        foreach (var pop in inhabitants)
+        {
+            size += pop.getSizeAtPosition(new Vector2(x, y));
+        }
+        Ressource_UI.text += "The settlement has a population of " + size + " people.\n";
+        Ressource_UI.text += getHoodstype(allressources);
 
     }
 
-    //Technology and such
-    private int calculateFoodProduction()
+    private int totalFoodProduction()
     {
-        HexTile_Info[][] map = Controller_GameData.GameMap;
+        HexTile_Info[][] map = Controller.GameMap;
         int ret = 0;
-        
-        ret += calculateFoodProduction_helper(map[x + 1][y]);
-        ret += calculateFoodProduction_helper(map[x - 1][y]);
-        ret += calculateFoodProduction_helper(map[x][y + 1]);
-        ret += calculateFoodProduction_helper(map[x][y - 1]);
 
-        if (y % 2 == 0) {
-            ret += calculateFoodProduction_helper(map[x - 1][y + 1]);
-            ret += calculateFoodProduction_helper(map[x - 1][y - 1]);
-        } else {
-            ret += calculateFoodProduction_helper(map[x + 1][y + 1]);
-            ret += calculateFoodProduction_helper(map[x + 1][y - 1]);   
+        //above
+        ret += FoodProduction(map[x][y + 1]);
+        //below
+        ret += FoodProduction(map[x][y - 1]);
+        //left
+        ret += FoodProduction(map[x - 1][y]);
+        //right
+        ret += FoodProduction(map[x + 1][y]);
+
+        //left,right depending on even or odd
+        if (x % 2 == 0)
+        {
+            ret += FoodProduction(map[x - 1][y - 1]);
+            ret += FoodProduction(map[x + 1][y - 1]);
+        }
+    
+        else
+        {    
+            ret += FoodProduction(map[x - 1][y + 1]);
+            ret += FoodProduction(map[x + 1][y + 1]);
         }
         if (influenceRange > 1)
         {
@@ -63,20 +108,14 @@ public class Settlement : Game_Entity
         return ret;
     }
 
-    public static int calculateFoodProduction_helper(HexTile_Info field)
+    public static int FoodProduction(HexTile_Info field)
     {
         int ret = 0;
         if (field == null) return 0;
-
-
-        // 0 if no water
-
-        //ignore temp already handled in soil and terrain devide by zero?
-
         //ret = field.Suesswassergrad / field.Roughness; //value water more and make roughness count more in the extreme?
-        ret = (field.Suesswassergrad + field.Roughness - 1) / field.Roughness;//is simple division to round up
+        ret = (field.suesswassergrad + field.roughness - 1) / field.roughness;//is simple division to round up
 
-        switch (field.SoilType)
+        switch (field.soil)
         {
             case Soil.Lössböden: ret *= 10; break;
             case Soil.Schwemmböden: ret *= 9; break;
@@ -88,12 +127,12 @@ public class Settlement : Game_Entity
         }
 
         //Terrain Field *1, Grass *0.4, unworked(jungle) *0.1?
-        switch (field.TileTerrain)
+        switch (field.terrain)
         {
             case Terrain.Field:
                 ret *= 10;
                 break;
-            case Terrain.Grass:
+            case Terrain.Grassland:
                 ret *= 4;
                 break;
             default:
@@ -103,81 +142,143 @@ public class Settlement : Game_Entity
         return ret;
     }
 
-    private int calculateFoodConsumption()
+    private int totalFoodConsumption()
     {
-        //TODO: Implement food consumption calculation
-        return 0;
+        HexTile_Info[][] map = Controller.GameMap;
+        int ret = 0;
+
+        //above
+        ret += FoodConsumption(map[x][y + 1]);
+        //below
+        ret += FoodConsumption(map[x][y - 1]);
+        //left
+        ret += FoodConsumption(map[x - 1][y]);
+        //right
+        ret += FoodConsumption(map[x + 1][y]);
+
+        //left,right depending on even or odd
+        if (x % 2 == 0)
+        {
+            ret += FoodConsumption(map[x - 1][y - 1]);
+            ret += FoodConsumption(map[x + 1][y - 1]);
+        }
+    
+        else
+        {
+            ret += FoodConsumption(map[x - 1][y + 1]);
+            ret += FoodConsumption(map[x + 1][y + 1]);
+        }
+        if (influenceRange > 1)
+        {
+            //TODO add malus for distance
+        }
+        return ret;
+    }
+
+    private int FoodConsumption(HexTile_Info field)
+    {
+        int v = 0;
+        foreach (var entity in Controller.movables)
+        {
+            if (entity is Pop pop)
+            {
+                v += pop.getSizeAtPosition(new Vector2(field.x, field.y));
+            }
+        }
+        return v;
     }
 
     private int calculateFoodStoredeachTurn()
     {
-        //TODO: Implement food storage calculation
-        return 0;
-    }
+        int a = totalFoodConsumption();
+        int b = totalFoodProduction();
+        int c = maxfoodStorable;
+        int d = foodstoredcurrently;
+        if (b - a > 0)
+        {
+            int e = b - a;
+            if (e + d > c)
+            {
+                foodstoredcurrently = c;
+                Debug.Log("The settlement at x:" + x + " y:" + y + " is has excess production of " + (e) + ". but has only " + (c - d) + " food storage left.");
+                return c - d;
+            }
+            else
+            {
+                foodstoredcurrently += e;
+                Debug.Log("The settlement at x:" + x + " y:" + y + " is storing " + (e) + " food.");
+                return e;
 
-    private List<(Ressourcen, int)> giveResources()
-    {
-        List<(Ressourcen, int)> re = new List<(Ressourcen, int)>();
-        HexTile_Info[][] map = Controller_GameData.GameMap;
-
-        re.AddRange(giveResources_helper(map[x + 1][y]));
-        re.AddRange(giveResources_helper(map[x - 1][y]));
-        re.AddRange(giveResources_helper(map[x][y + 1]));
-        re.AddRange(giveResources_helper(map[x][y - 1]));
-
-        if (y % 2 == 0) {
-            re.AddRange(giveResources_helper(map[x - 1][y + 1]));
-            re.AddRange(giveResources_helper(map[x - 1][y - 1]));
-        } else {
-            re.AddRange(giveResources_helper(map[x + 1][y + 1]));
-            re.AddRange(giveResources_helper(map[x + 1][y - 1]));
+            }
         }
-        //TODO welche Ressourcen selber + abbauschwierigkeitsgrad(wie viel Arbeit braucht es?)
-        //TODO welche Ressourcen erhandelbar zu welchem Preis
-        //TODO welche Ressourcen exportierbar zum besten Preis
+        else
+        {
+            Debug.Log("The settlement at x:" + x + " y:" + y + " is consuming more food than it produces and thus starving.");
+            return 0;
+        }
+    }
+    public static List<(GoodsType, int)> totalGoodProductions(Settlement settlement)
+    {
+        List<(GoodsType, int)> re = new List<(GoodsType, int)>();
+        HexTile_Info[][] map = Controller.GameMap;
 
-        //Ressources potentially available: Lehm braucht lehmvorkommen und wenig arbeitsaufwand,Lehmziegel braucht lehmvorkommen, Hitze, Stroh? und mittel arbeitsaufwand, Ton braucht lehmvorkommen, wasser und mittel arbeitsaufwand, Tonziegel/Keramik braucht Ton,brennmaterial, und viel arbeitsaufwand
-        //Stroh braucht Getreideanbau und wenig arbeitsaufwand, Schilf braucht Vorkommen und wenig arbeitsaufwand, Holz braucht Wald und extremen arbeitsaufwand?, kleinee steine braucht nichts und wenig arbeitsaufwand, mittlere_große steine brauchen Vorkommen und viel arbeitsaufwand
-        //Kalk braucht Kalkböden/Muscheln und mittleren Arbeitsaufwand, Kalkmörtel braucht Kalkböden/Muscheln, Brennmaterial und viel Arbeitsaufwand, Flachs braucht Flachsanbau und hohen Arbeitsaaufwans, Colors braucht Vorkommen und verschiedenen Arbeitsaufwand
-        //Verzierung braucht MuschelnPerlen,Knochen/Zähne/iwelche ressourcen und viel Arbeitsaufwand, Bitumen braucht Vorkommen und viel Arbeitsaufwand, Harz braucht Wald und mittleren Aufwand, Asche braucht Vegetation? und wenig Arbeitsaufwand, Tierprodukte TODO
+        re.AddRange(GoodProduction(map[settlement.x + 1][settlement.y]));
+        re.AddRange(GoodProduction(map[settlement.x - 1][settlement.y]));
+        re.AddRange(GoodProduction(map[settlement.x][settlement.y + 1]));
+        re.AddRange(GoodProduction(map[settlement.x][settlement.y - 1]));
 
-        //Leder/Felle → Tiere, Gerben (viel Aufwand). //Wolle/Haar → Schafe/Ziegen, Spinnen, Weben (hoch). //Knochen/Horn/Geweih → Jagd/Nutztier, mittel Aufwand (Bearbeitung). //Sehnen/Darm → Tiere, Aufbereitung (mittel), wichtig für Bindungen.
-
-        //TODO add tradable ressources, replace if cheaper to produce
-
-        //TODO: Implement resource giving logic
+        if (settlement.y % 2 == 0) {
+            re.AddRange(GoodProduction(map[settlement.x - 1][settlement.y + 1]));
+            re.AddRange(GoodProduction(map[settlement.x - 1][settlement.y - 1]));
+        } else {
+            re.AddRange(GoodProduction(map[settlement.x + 1][settlement.y + 1]));
+            re.AddRange(GoodProduction(map[settlement.x + 1][settlement.y - 1]));
+        }
         return re;
     }
 
-    private List<(Ressourcen, int)> giveResources_helper(HexTile_Info tile)
+    public List<(GoodsType, int)> productionExportTo(Settlement settlement_to_export_to)
     {
-        //z.b lehm existiert lehmvorkommen + (100-roughness) * 1(arbeitsaufwand)
-        //z.b holz existiert wood + (100-roughness) * 4(arbeitsaufwand)
-        //z.b stroh existiert entityfarm.getreide pauschale LATER
-        List<(Ressourcen, int)> ret = new List<(Ressourcen, int)>();
+        List<(GoodsType, int)> allressources = new List<(GoodsType, int)>();
+        List<(GoodsType, int)> exportableResources = totalGoodProductions(this);
+        foreach (var resource in exportableResources)
+        {
+            Debug.Log("We here at x:" + this.x + " y:" + this.y + " are producing " + resource.Item1 + ".");
+            List<(Vector2Int, int)> transportCosts = NeolithianRev.Utility.MovementAlgos.GetCheapestPath(new Vector2Int(this.x, this.y), new Vector2Int(settlement_to_export_to.x, settlement_to_export_to.y), resource.Item1);
+
+            int adjustedAmount = resource.Item2 + transportCosts.Sum(step => step.Item2);
+            Debug.Log("We here at x:" + this.x + " y:" + this.y + " are exporting " + resource.Item1 + " to " + settlement_to_export_to.x + " " + settlement_to_export_to.y + " for a total cost of " + adjustedAmount + ".");
+            allressources.Add((resource.Item1, adjustedAmount));
+        }
+        return allressources;
+    }
+
+    private static List<(GoodsType, int)> GoodProduction(HexTile_Info tile)
+    {
+        List<(GoodsType, int)> ret = new List<(GoodsType, int)>();
         foreach (GoodsType good in tile.localResource)
         {
-            if (good == GoodsType.Wood)
+            if (good == GoodsType.Holz)
             {
                 // Calculate wood resources based on tile properties
-                int amount = (tile.Roughness) * 4; // Example calculation
-                ret.Add((Ressourcen.Holz, amount));
+                int amount = (tile.roughness) * 4; // Example calculation
+                ret.Add((GoodsType.Holz, amount));
             }
             else if (good == GoodsType.Clay)
             {
                 // Calculate Lehm resources based on tile properties
-                int amount = (tile.Roughness) * 1; // Example calculation
-                ret.Add((Ressourcen.Lehm, amount));
+                int amount = (tile.roughness) * 1; // Example calculation
+                ret.Add((GoodsType.Lehm, amount));
             }
         }
         return ret;
     }
 
-    private string getHoodstype(List<(Ressourcen, int)> resources)
+    private string getHoodstype(List<(GoodsType, int)> resources)
     {
-        bool hasWood = resources.Any(r => r.Item1 == Ressourcen.Holz);
-        bool hasClay = resources.Any(r => r.Item1 == Ressourcen.Lehm);
-        bool hasStraw = resources.Any(r => r.Item1 == Ressourcen.Stroh);
+        bool hasWood = resources.Any(r => r.Item1 == GoodsType.Holz);
+        bool hasClay = resources.Any(r => r.Item1 == GoodsType.Lehm);
+        bool hasStraw = resources.Any(r => r.Item1 == GoodsType.Stroh);
         if (hasWood) {
             return "because the settlement access to wood, the houses are built from wood";
         }else if (hasClay && hasStraw) {
@@ -187,6 +288,38 @@ public class Settlement : Game_Entity
         }
     } 
 
+    public override void move_to(int x, int y)
+    {
+        // TODO: Implement move with Vector2Int for Settlement
+    }
+
+    public override void move_starter()
+    {
+        // TODO: Implement move for Settlement
+    }
+
+    public override void Turnend()
+    {
+        calculateFoodStoredeachTurn();
+        //TODO popgrowth, in general and with wood, clay price
+    }
+
+
+}
+
+
+//directly control walls, major infrastructure, places, religious sites?
+
+//population <1000 
+
+//Gebäude pallisaden, nahrungsspeicher, wohnhäuser/langhäuser
+
+//hamlets (like Jericho or Çatalhöyük
+
+//Ackerbau und Viehzucht
+
+//Monumentalbauten (z. B. Megalithgräber) oft rund oder oval, da Gewölbe/Kranztechnik mit schweren Steinen einfacher rund zu schließen ist.
+//Spezialgebäude: Grubenhäuser?, Vorratslager, Werkststtbauten?, Tempel, Gräber, Grabenwerke, Gemeinschaftsmonumente
 
     //Der Bau von Häusern ist wie billig
     //Fundament:
@@ -208,59 +341,16 @@ public class Settlement : Game_Entity
 
 
     // Implement abstract members from Game_Entity:
-    public override void move_to(UnityEngine.Vector2Int endpos)
-    {
-        // TODO: Implement move with Vector2Int for Settlement
-    }
 
-    public override void move_starter()
-    {
-        // TODO: Implement move for Settlement
-    }
+    
+        //z.b lehm existiert lehmvorkommen + (100-roughness) * 1(arbeitsaufwand)
+        //z.b holz existiert wood + (100-roughness) * 4(arbeitsaufwand)
+        //z.b stroh existiert entityfarm.getreide pauschale LATER
 
-    public override void Turnend()
-    {
-        // TODO: Implement Turnend for Settlement
-    }
+        
+        //Ressources potentially available: Lehm braucht lehmvorkommen und wenig arbeitsaufwand,Lehmziegel braucht lehmvorkommen, Hitze, Stroh? und mittel arbeitsaufwand, Ton braucht lehmvorkommen, wasser und mittel arbeitsaufwand, Tonziegel/Keramik braucht Ton,brennmaterial, und viel arbeitsaufwand
+        //Stroh braucht Getreideanbau und wenig arbeitsaufwand, Schilf braucht Vorkommen und wenig arbeitsaufwand, Holz braucht Wald und extremen arbeitsaufwand?, kleinee steine braucht nichts und wenig arbeitsaufwand, mittlere_große steine brauchen Vorkommen und viel arbeitsaufwand
+        //Kalk braucht Kalkböden/Muscheln und mittleren Arbeitsaufwand, Kalkmörtel braucht Kalkböden/Muscheln, Brennmaterial und viel Arbeitsaufwand, Flachs braucht Flachsanbau und hohen Arbeitsaaufwans, Colors braucht Vorkommen und verschiedenen Arbeitsaufwand
+        //Verzierung braucht MuschelnPerlen,Knochen/Zähne/iwelche ressourcen und viel Arbeitsaufwand, Bitumen braucht Vorkommen und viel Arbeitsaufwand, Harz braucht Wald und mittleren Aufwand, Asche braucht Vegetation? und wenig Arbeitsaufwand, Tierprodukte TODO
 
-
-}
-
-
-//directly control walls, major infrastructure, places, religious sites?
-
-//population <1000 
-
-//Gebäude pallisaden, nahrungsspeicher, wohnhäuser/langhäuser
-
-//hamlets (like Jericho or Çatalhöyük
-
-//Ackerbau und Viehzucht
-
-//Monumentalbauten (z. B. Megalithgräber) oft rund oder oval, da Gewölbe/Kranztechnik mit schweren Steinen einfacher rund zu schließen ist.
-//Spezialgebäude: Grubenhäuser?, Vorratslager, Werkststtbauten?, Tempel, Gräber, Grabenwerke, Gemeinschaftsmonumente
-
-public enum Ressourcen
-{
-    Lehm, //focus on
-    Holz, //focus on
-    Stroh,
-    Lehmziegel,
-    Ton,
-    Tonziegel,
-    Schilf,
-    KleineSteine,
-    MittlereGroßeSteine,
-    Kalk,
-    Kalkmörtel,
-    Flachs,
-    Farben,
-    Verzierung,
-    Bitumen,
-    Harz,
-    Asche,
-    Tierprodukte,
-    Sonne_Hitze,
-    Wasser
-
-}
+        //Leder/Felle → Tiere, Gerben (viel Aufwand). //Wolle/Haar → Schafe/Ziegen, Spinnen, Weben (hoch). //Knochen/Horn/Geweih → Jagd/Nutztier, mittel Aufwand (Bearbeitung). //Sehnen/Darm → Tiere, Aufbereitung (mittel), wichtig für Bindungen.

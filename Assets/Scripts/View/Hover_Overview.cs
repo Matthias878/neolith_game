@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 public class Hover_Overview : MonoBehaviour
 {
     public TextMeshProUGUI infoText;
-    private Camera cam; //Camera is on movable on x,y plane with z = 10 (ratation is x= 0 y= 180 z= 0) projection is orthographic with size changable by scrolling
+    private Camera cam; 
 
     void Start()
     {
@@ -38,7 +38,6 @@ public class Hover_Overview : MonoBehaviour
             {
                 HexTile_Info info = hexComp.hexTileInfo;
                 infoText.text = info.ToString();
-                //Debug.Log($"Hovering over tile: {info}");
             }
         }
     }

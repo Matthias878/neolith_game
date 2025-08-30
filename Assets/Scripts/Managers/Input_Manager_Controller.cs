@@ -3,8 +3,7 @@ using UnityEngine.InputSystem;
 using System.Linq;
 using TMPro;
 using UnityEngine.UI;
-
-
+using UnityEngine.SceneManagement;
 public class Input_Manager_Controller : MonoBehaviour
 {
 
@@ -15,7 +14,7 @@ public class Input_Manager_Controller : MonoBehaviour
     void Awake()
     {
         foodProdGenerator = GameObject.Find("GenerateFoodProd").GetComponent<GenerateFoodProd>();
-        displayController = GameObject.Find("Script_Holder_Ingame")?.GetComponent<Controller>();
+        Controller = GameObject.Find("Script_Holder_Ingame")?.GetComponent<Controller>();
         if (canvasGameObject != null)
         {
             Transform infoTransform = canvasGameObject.transform.Find("Current_Information");
@@ -33,35 +32,32 @@ public class Input_Manager_Controller : MonoBehaviour
             Debug.LogWarning("canvasGameObject reference is not set in the inspector.");
         }
 
-        cultureWindow = GameObject.Find("Cultures_Window");
         mainCanvas = GameObject.Find("Main_Canvas");
+        cultureWindow = GameObject.Find("Cultures_Window");
         cultureWindow.SetActive(false);
+        peoplesWindow = GameObject.Find("Peoples_Window");
+        peoplesWindow.SetActive(false);
+        filenameInput = GameObject.Find("Input_Save_Name").GetComponent<TMP_InputField>();
+        escapeMenu = GameObject.Find("Escape_Menu");
+        escapeMenu.SetActive(false);
     }
     //TODO integrate turn system
     //TODO right-click drag window
 
-
     private bool togglFoodProduction = false;
-    private Controller displayController;
+    private Controller Controller;
     private static Input_Manager_State currentState = Input_Manager_State.No_Input_Load;   //ENUM that contains all unity layers
     public TextMeshProUGUI GameStateInfoText; //TOP RIGHT 
     public GameObject canvasGameObject; //Big lower left ui
     private TextMeshProUGUI UI_Info; //part of canvas object
     public Button buttonPrefab; // prefab to add to canvasobject
     public TextMeshProUGUI textPrefab; // prefab to add to canvasobject
+    public TextMeshProUGUI endturnbutton; private int currentTurn = 1;
 
-    public static void InputFail()
-    {
-        Debug.LogError("Input failed in state: " + currentState);
-        //TODO
-    }
-
-    //DO smth on rightclick
-    void Update()
+    void Update() //check gamestate here?
     {
 
         GameStateInfoText.text = currentState.ToString();
-        //Debug.Log("Tries to check");
         if (Mouse.current != null)
         {
             if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -97,6 +93,22 @@ public class Input_Manager_Controller : MonoBehaviour
                     }
                 }
             }
+        }
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) //isPressed
+        {
+            if (currentState == Input_Manager_State.Escape_Menu)
+            {
+                SetGameState(Input_Manager_State.Base_Tile_Layer);
+                return;
+            }
+            else //what if in some other menu?
+            {
+                SetGameState(Input_Manager_State.Escape_Menu);
+            }
+        }
+        if (Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) //isPressed TODO can hold
+        {
+            EndTurn();
         }
     }
 
@@ -176,7 +188,7 @@ public class Input_Manager_Controller : MonoBehaviour
                 }
                 else if (script is HexTileComponent hexTileComp)
                 {
-                    Debug.Log(hexTileComp.hexTileInfo.ToString());
+                    //Debug.Log(hexTileComp.hexTileInfo.ToString());
                 }
                 else
                 {
@@ -209,7 +221,7 @@ public class Input_Manager_Controller : MonoBehaviour
     public void ToggleFoodProduction()
     {
         if (togglFoodProduction == false)
-            foodProdGenerator.Show_food_prod_on_map(displayController);
+            foodProdGenerator.Show_food_prod_on_map(Controller);
         else
             foodProdGenerator.deactivate_food_prod();
         togglFoodProduction = !togglFoodProduction;
@@ -218,12 +230,12 @@ public class Input_Manager_Controller : MonoBehaviour
     private void Clear_all_Footsteps()
     {
 
-        if (displayController != null && displayController.movables != null)
+        if (Controller != null && Controller.movables != null)
         {
-            displayController.movables
+            Controller.movables
                 .Where(e => (e is Footsteps))
                 .ToList()
-                .ForEach(e => displayController.AddEntity_toremove(e));
+                .ForEach(e => Controller.AddEntity_toremove(e));
         }
     }
     public void SetGameState(Input_Manager_State newState)
@@ -246,6 +258,18 @@ public class Input_Manager_Controller : MonoBehaviour
             case Input_Manager_State.Game_Entity_Layer:
                 UI_Info.text = "You have selected a game entity, interact with it.";
                 break;
+            case Input_Manager_State.Cultures_Window:
+                cultureWindow.SetActive(true); mainCanvas.SetActive(false);
+                UI_Info.text = "You have opened the cultures window, manage your cultures here.";
+                break;
+            case Input_Manager_State.Peoples_Window:
+                peoplesWindow.SetActive(true); mainCanvas.SetActive(false);
+                UI_Info.text = "You have opened the peoples window, manage your people here.";
+                break;
+            case Input_Manager_State.Escape_Menu:
+                escapeMenu.SetActive(true); mainCanvas.SetActive(false);
+                UI_Info.text = "You have opened the escape menu, manage your game here.";
+                break;
             default:
                 Debug.LogWarning("Unknown game state: " + newState);
                 break;
@@ -263,6 +287,21 @@ public class Input_Manager_Controller : MonoBehaviour
 
     private void leaveState(Input_Manager_State oldState)
     {
+        switch (oldState)
+        {
+            case Input_Manager_State.Cultures_Window:
+                cultureWindow.SetActive(false);
+                mainCanvas.SetActive(true);
+                break;
+            case Input_Manager_State.Peoples_Window:
+                peoplesWindow.SetActive(false);
+                mainCanvas.SetActive(true);
+                break;
+            case Input_Manager_State.Escape_Menu:
+                escapeMenu.SetActive(false);
+                mainCanvas.SetActive(true);
+                break;
+        }
         //logic
         Clear_all_Footsteps();
     }
@@ -284,14 +323,59 @@ public class Input_Manager_Controller : MonoBehaviour
         return currentState;
     }
 
-    private GameObject cultureWindow;private GameObject mainCanvas; //Set in the Awake function
-    public void OpenCultureWindow(){SetGameState(Input_Manager_State.Cultures_Window);cultureWindow.SetActive(true);mainCanvas.SetActive(false);}public void CloseCultureWindow(){SetGameState(Input_Manager_State.Base_Tile_Layer);cultureWindow.SetActive(false);mainCanvas.SetActive(true);}
+    public void EndTurn()
+    {
+        currentTurn++;
+        endturnbutton.text = $"Current Turn: {currentTurn}. Click this button, or press Enter for next Turn.";
+        SetGameState(Input_Manager_State.No_Input_Load);
+        // Call TurnEnd on all movables
+        if (Controller != null && Controller.movables != null)
+        {
+            foreach (var entity in Controller.movables)
+            {
+                if (entity != null)
+                {
+                    entity.Turnend();
+                }
+            }
+        }
+        SetGameState(Input_Manager_State.Base_Tile_Layer);
+    }
 
+    //Cavases
+    private GameObject cultureWindow; private GameObject mainCanvas; private GameObject peoplesWindow; private GameObject escapeMenu; //Set in the Awake function//Set in the Awake function all canvases
+    //Culture Window
+    public void OpenCultureWindow() { SetGameState(Input_Manager_State.Cultures_Window); }
+    public void CloseCultureWindow() { SetGameState(Input_Manager_State.Base_Tile_Layer); }
+    // Family window
+    public void OpenPeoplesWindow() { SetGameState(Input_Manager_State.Peoples_Window); }
+    public void ClosePeoplesWindow() { SetGameState(Input_Manager_State.Base_Tile_Layer); }
+
+
+    private TMPro.TMP_InputField filenameInput;//savegamename input field
+    public void SaveGame()
+    {
+        string name = filenameInput.text.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            name = "no_name_provided";
+            filenameInput.text = name;
+        }
+        Controller.SaveCurrentGame(name + ".json");
+    }
+
+    public void LeaveToMenu()
+    {
+        //clean, -> remove all statics
+        SceneManager.LoadScene("Main_Menu");
+
+    }
 }
 
 public enum Input_Manager_State //Different Scenes?
 {
     Main_Menu, //?
+    Escape_Menu,
     Base_Tile_Layer,// Game_Map_Overview, //Base_Tile_Layer
     Diplomacy_Window,
     Game_Entity_Layer, //Entity_Selection, //Game_Entity_Layer
@@ -303,6 +387,7 @@ public enum Input_Manager_State //Different Scenes?
     Campaign_Manager,
     Battle,
     No_Input_Load,
-    Cultures_Window
+    Cultures_Window,
+    Peoples_Window
 }   
         

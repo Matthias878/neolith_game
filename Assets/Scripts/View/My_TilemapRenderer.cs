@@ -4,7 +4,7 @@ using UnityEngine;
 public class My_TilemapRenderer : MonoBehaviour
 {
     public Transform tileParent;
-    public float tileWidth = 1f;
+    public float tileWidth = 1f; //1f;
     public float tileHeight = 0.866f; // flat-top hexes
 
     // Registries
@@ -12,7 +12,7 @@ public class My_TilemapRenderer : MonoBehaviour
     private readonly Dictionary<int, GameObject> _entityGO = new();
     private readonly Dictionary<int, GameObject> _settlementGO = new();
 
-    public void StopRendering(HexTile_Info[][] gameMap, Game_Entity[] movables, Settlement[] settlements)
+    public void StopRendering(HexTile_Info[][] gameMap, Game_Entity[] movables)
     {
         // tiles
         if (gameMap != null)
@@ -41,29 +41,17 @@ public class My_TilemapRenderer : MonoBehaviour
                 _entityGO.Remove(e.id);
             }
         }
-
-        // settlements
-        if (settlements != null)
-        {
-            foreach (var s in settlements)
-            {
-                if (s == null) continue;
-                if (_settlementGO.TryGetValue(s.id, out var go) && go) DestroySafe(go);
-                _settlementGO.Remove(s.id);
-            }
-        }
     }
 
     public void RenderMap(HexTile_Info[][] gameMap)
     {
-        for (int y = 0; y < gameMap.Length; y++)
+        for (int x = 0; x < gameMap.Length; x++)
         {
-            for (int x = 0; x < gameMap[y].Length; x++)
+            for (int y = 0; y < gameMap[x].Length; y++)
             {
-                HexTile_Info tile = gameMap[y][x];
+                HexTile_Info tile = gameMap[x][y];
                 if (tile == null) continue;
-
-                string spriteName = tile.type.ToString();
+                string spriteName = tile.terrain.ToString();
                 Sprite sprite = Resources.Load<Sprite>("Sprites/" + spriteName);
                 if (sprite == null)
                 {
@@ -107,6 +95,7 @@ public class My_TilemapRenderer : MonoBehaviour
         foreach (var entity in movables)
         {
             if (entity == null) continue;
+            if (entity.neverRender == true) continue;
 
             if (_entityGO.TryGetValue(entity.id, out var go) && go) DestroySafe(go);
             _entityGO.Remove(entity.id);

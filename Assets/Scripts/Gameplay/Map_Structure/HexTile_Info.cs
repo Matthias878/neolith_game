@@ -1,132 +1,125 @@
 using System.Linq;
 using UnityEngine;
+using Newtonsoft.Json;
+using System.IO;
 
-[System.Serializable]
+[JsonObject(MemberSerialization.Fields)]
 public class HexTile_Info
 {
-    public bool haschanged_render=true; //so the hex doesn't have to be redrawn all the time
-    private Soil soil; //
+    public bool haschanged_render = true; //so the hex doesn't have to be redrawn all the time
+    public Soil soil; //
 
-    private int roughness; //Berg, Hügel, Flachland 1-100, average height?
+    public int roughness; //Berg, Hügel, Flachland 1-100, average height?
 
-    private int süßwassergrad; //Misching aus kleineren Flüssen und grundwasserspiegel, speicherfähighkeit des bodens 1-100
+    public int suesswassergrad; //Misching aus kleineren Flüssen und grundwasserspiegel, speicherfähighkeit des bodens 1-100
 
-    private int temperatur; //Klimazone 1-100
+    public int temperatur; //Klimazone 1-100
 
-    private Terrain Terrain = Terrain.Grass;
+    public Terrain terrain;
 
-    public Soil SoilType => soil;
-    public int Roughness => roughness;
-    public int Suesswassergrad => süßwassergrad;
-    public int Temperatur => temperatur;
-    public Terrain TileTerrain => Terrain;
-    public bool IsForest => Forest;
+    public bool IsForest;
 
-    //Führt zu snowy mountains and desert, swamp? jungle plains etc... und moore! (entwässerung mittelalter)
-
-    private bool Forest ;
-
-
-    private Terrain generateTerrain()
-    {// Generate terrain based on the tile's properties //ideally with hexagon picture
-        return Terrain.Grassland; // Placeholder, implement actual terrain generation logic
-    }   
-
-    public int x;
-    public int y;
-    public TileType type;
-
+    public int x;public int y;
+    public bool isWater;
     public GoodsType[] localResource;
 
     //Constructors------
-        private static System.Random rng = new System.Random();  // Random generator for soil, roughness, wassergrad, temperatur
+    private static System.Random rng = new System.Random();  // Random generator for soil, roughness, wassergrad, temperatur
 
-        public HexTile_Info(int x, int y, TileType type, GoodsType[] goods)
-            {
-            this.x = x;
-            this.y = y;
-            this.type = type;
-            this.localResource = goods;
-            if (goods == null || goods.Length == 0)
-            {
-                var values = System.Enum.GetValues(typeof(GoodsType));
-                this.localResource = Enumerable.Range(0, 3)
-                    .Select(_ => (GoodsType)values.GetValue(rng.Next(values.Length)))
-                    .Distinct()
-                    .Take(3)
-                    .ToArray();
-            }
-
-            // Randomize soil
-            this.soil = (Soil)rng.Next(System.Enum.GetValues(typeof(Soil)).Length);
-            // Randomize roughness, süßwassergrad, temperatur (1-100)
-            this.roughness = rng.Next(1, 101);
-            this.süßwassergrad = rng.Next(1, 101);
-            this.temperatur = rng.Next(1, 101);
-
-            // Calculate forest presence
-            this.Forest = hasForest();
-            if (this.Forest)
-                localResource = localResource.Append(GoodsType.Wood).ToArray();
+    public HexTile_Info(int y, int x, GoodsType[] goods, bool isWater = false)
+    {
+        this.x = x;
+        this.y = y;
+        this.isWater = isWater;
+        this.localResource = goods;
+        if (goods == null || goods.Length == 0)
+        {
+            var values = System.Enum.GetValues(typeof(GoodsType));
+            this.localResource = Enumerable.Range(0, 3)
+                .Select(_ => (GoodsType)values.GetValue(rng.Next(9)))//manual natural ressource size
+                .Distinct()
+                .Take(3)
+                .ToArray();
         }
 
-        private bool hasForest()
+        // Randomize soil
+        this.soil = (Soil)rng.Next(System.Enum.GetValues(typeof(Soil)).Length);
+        // Randomize roughness, suesswassergrad, temperatur (1-100)
+        this.roughness = rng.Next(1, 101);
+        this.suesswassergrad = rng.Next(1, 101);
+        this.temperatur = rng.Next(1, 101);
+
+        // Calculate forest presence
+        IsForest = hasForest();
+        if (IsForest)
+            localResource = localResource.Append(GoodsType.Holz).ToArray();
+        generateTerrain();
+    }
+
+    private bool hasForest()
+    {
+        if (suesswassergrad > 33)
         {
-            if (süßwassergrad > 33)
+            if (temperatur > 10 && temperatur < 90)
             {
-                if (temperatur > 10 && temperatur < 90)
+                if (roughness < 85)
                 {
-                    if (roughness < 85)
+                    switch (soil)
                     {
-                        switch (soil)
-                        {
-                            case Soil.Lössböden: return true;
-                            case Soil.Schwemmböden: return true;
-                            case Soil.Schwarzerde: return true;
-                            case Soil.Braunerde: if (süßwassergrad > 50) return true; break;
-                            case Soil.Kalksteinböden: if (süßwassergrad > 50) return true; break;
-                            case Soil.Sandböden: if (süßwassergrad > 70 && temperatur > 30 && temperatur < 70) return true; break;
-                            case Soil.Podsolböden: if (süßwassergrad > 40 && temperatur > 20 && temperatur < 70 && roughness < 70) return true; break;
-                        }
+                        case Soil.Lössböden: return true;
+                        case Soil.Schwemmböden: return true;
+                        case Soil.Schwarzerde: return true;
+                        case Soil.Braunerde: if (suesswassergrad > 50) return true; break;
+                        case Soil.Kalksteinböden: if (suesswassergrad > 50) return true; break;
+                        case Soil.Sandböden: if (suesswassergrad > 70 && temperatur > 30 && temperatur < 70) return true; break;
+                        case Soil.Podsolböden: if (suesswassergrad > 40 && temperatur > 20 && temperatur < 70 && roughness < 70) return true; break;
                     }
                 }
             }
-            return false;
         }
+        return false;
+    }
 
-    //------
-        public override string ToString()
+    private void generateTerrain()//defines hexagon picture// Generate terrain based on the tile's properties //Führt zu snowy mountains and desert, swamp? jungle plains etc... und moore! (entwässerung mittelalter)
+    {
+        if (isWater == true)
+            terrain = Terrain.River; // Water tiles are rivers for simplicity
+        else
+            terrain = Terrain.Grassland; // Placeholder, implement actual terrain generation logic
+    }
+    public override string ToString()
     {
         string goods = localResource != null && localResource.Length > 0
             ? string.Join(", ", localResource)
             : "None";
+
+        string t = "";
+
+        if (isWater == false)
+        {
+            t = $"Type: Land\n";
+        }
+        else
+        {
+            t = $"Type: Water\n";
+        }
         return
             $"X: {x}\n" +
             $"Y: {y}\n" +
-            $"Type: {type}\n" +
+            $"{t}" +
             $"Soil: {soil}\n" +
             $"Roughness: {roughness}\n" +
-            $"Süßwassergrad: {süßwassergrad}\n" +
+            $"Süßwassergrad: {suesswassergrad}\n" +
             $"Temperatur: {temperatur}\n" +
-            $"Forest: {Forest}\n" +
+            $"Forest: {IsForest}\n" +
             $"HasChanged: {haschanged_render}\n" +
             $"Goods: {goods}";
     }
-}
-public enum TileType
-{
-    River,
-    Sea,
-    Land,
-    Canoyon,
-    Out_Of_Map,
-    //Neben Vulkanen?
 
-    //minimaler dünger
-
-    //in heißen gebieten mit künstlicher Bewässerung können felder versalzen (Drainage)
-    //nach brand kurzzeitig fruchtbar aber dann schnell wieder unfruchtbar Nadelwald
-
+    public string ToSerializable()
+    {
+        return "TODO";
+    }
 }
 public enum Soil
 {
@@ -142,8 +135,9 @@ public enum Soil
 }
 public enum Terrain //Vegetation? Flora Fauna? 
 {
+    River,
+    Sea,
     Field,
-    Grass,
     Grassland,
     Forest,
     Mountain,
@@ -191,12 +185,12 @@ public enum Terrain //Vegetation? Flora Fauna?
     MangroveForest,
     Rocky,
     Crater,
-    Sinkhole
+    Sinkhole,
+    Out_Of_Map
 }
 
-
 //all neighbouring hexes that can produce the same goods are one field (up to certain size)
-public enum GoodsType
+public enum GoodsType //natural resources
 {
     Flax,
     //Flax needs fertile, well-drained soil, best in moderate, temperate climates with sufficient rainfall. 
@@ -205,7 +199,7 @@ public enum GoodsType
     Clay,
     //very abundant in river valleys and deltas.
     //Can be turned into pottery and bricks.
-    Timber,
+    //Timber,
     //Too heavy for long-distance transport.
     //Can be turned into buildings, fuel (cooking, heating, pottery), boats.
     Obsidian,
@@ -228,5 +222,29 @@ public enum GoodsType
     // Used as red/yellow pigments, symbolic items.
     Salt,
     //Can be turned into seasoning and preservation.
-    Wood,
+    //hextile only random UNTIL HERE
+    //ressource not natural? goods not directly usable by settlements
+    //Wood,
+    //Verarbeitetere Produkte:
+    Lehm,//Ressource //focus on
+    Holz,//Ressource //focus on
+    Stroh,//Ressource
+    Lehmziegel,//Ressource
+    Ton,//Ressource
+    Tonziegel,//Ressource
+    Schilf,//Ressource
+    KleineSteine,//Ressource
+    MittlereGroßeSteine,//Ressource
+    Kalk,//Ressource
+    Kalkmörtel,//Ressource
+    Flachs,//Ressource
+    Farben,//Ressource
+    Verzierung,//Ressource
+    Bitumen,//Ressource
+    Harz,//Ressource
+    Asche,//Ressource
+    Tierprodukte,//Ressource
+    Sonne_Hitze,//Ressource
+    Wasser//Ressource
+
 }

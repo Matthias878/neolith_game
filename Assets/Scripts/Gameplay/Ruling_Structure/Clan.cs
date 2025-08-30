@@ -1,12 +1,59 @@
-public class Clan
+using System;
+using System.Collections.Generic;
+
+public class Clan //clans are all pops, indivual, entities Leaders sworn to the clan leader
 {
-    private Culture culture;
+    public Person Leader;
+    //public List<Person> notablePeople;
+    //public List<Pop> commoners;
+    //public Game_Entity[] Units_Settlements;
 
-    private Person Leader;
+    //public string name;
+    //public Culture culture; //?
 
-    private Clan master;
+    //private bool settled;
 
-    private Group[] groups;
+    public Clan(string name, Person leader)
+    {
+        //this.name = name;
+        //this.culture = culture;
+        this.Leader = leader;
+        //this.settled = new Random().Next(2) == 0; //random for each new clan?
+    }
 
-    private bool settled;
+    public override string ToString()
+    {
+        return $"The mighty clan: {Leader.name}'s \n These mighty rulers are sworn to the clan leader:\n" + getAllFollowers();
+    }
+
+    private string getAllFollowers()
+    {
+
+        string ret = "";
+
+        foreach (var entity in Controller.movables)
+        {
+            var tle = entity.leader.getClanLeader();
+            if (tle == Leader)
+            {
+                switch (entity.type)
+                {
+                    case "Pop":
+                        break;
+                    case "Settlement":
+                        ret += "The mighty: " + entity.leader.name + " has sworn his Settlement at " + entity.x + ", " + entity.y + " to " + Leader.name + "\n";
+                        break;
+                    case "Scout":
+                        ret += "The mighty: " + entity.leader.name + " has sworn his Scout at " + entity.x + ", " + entity.y + " to " + Leader.name + "\n";
+                        break;
+                    case "Settler":
+                        ret += "The mighty: " + entity.leader.name + " has sworn his Settler at " + entity.x + ", " + entity.y + " to " + Leader.name + "\n";
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return ret;
+    }
 }

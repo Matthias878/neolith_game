@@ -7,7 +7,7 @@ public class Settler_Unit : Game_Entity
     private int movePoints;
     protected int health;
     private int maxMovePoints = 6; // Default move points for a settler
-    public Settler_Unit(int x, int y) : base(1, x, y)
+    public Settler_Unit(int x, int y, Person leader) : base(1, x, y, leader)
     {
         this.movePoints = maxMovePoints;
         this.health = 100;
@@ -18,21 +18,13 @@ public class Settler_Unit : Game_Entity
 
         Button newButton = Controller_GameData.inputManagerController.addUIButton();
         newButton.GetComponentInChildren<TMP_Text>().text = "Click this button to found a new settlement.";
-        newButton.onClick.AddListener(() => foundSettlement());
+        newButton.onClick.AddListener(() => Settlement.foundSettlement(x, y, this.leader));
 
         
         Button newButtontwo = Controller_GameData.inputManagerController.addUIButton();
         newButtontwo.GetComponentInChildren<TMP_Text>().text = "fortify here.";
         newButtontwo.onClick.AddListener(() => fortify());
 
-    }
-
-    private void foundSettlement()
-    {
-        //logic
-        Controller_GameData.AddSettlement(new Settlement(x, y));
-        //change into city management
-        Controller_GameData.inputManagerController.SetGameState(Input_Manager_State.Settlement_Management_Layer);
     }
 
     private void fortify()
@@ -45,13 +37,13 @@ public class Settler_Unit : Game_Entity
     {
 
         HashSet<Vector2Int> reachableTiles = NeolithianRev.Utility.MovementAlgos.GetReachableTiles(
-            ConvertToTileTypeArray_helper(Controller_GameData.GameMap),
+            ConvertToTileTypeArray_helper(Controller.GameMap),
             new Vector2Int(x, y),
             movePoints,
             Entity_Stats.Settler_Movement_Costs
         );
         string positions = string.Join(", ", reachableTiles);
-        Debug.Log("current Movepoints are: " + movePoints + " Reachable positions: " + positions);
+        //Debug.Log("current Movepoints are: " + movePoints + " Reachable positions: " + positions);
         foreach (var tile in reachableTiles)
         {
             Controller_GameData.AddEntity(new Footsteps(tile.x, tile.y, this));
@@ -65,15 +57,15 @@ public class Settler_Unit : Game_Entity
         movePoints = maxMovePoints; // Reset move points at the end of the turn
     }
 
-    public override void move_to(Vector2Int endpos)
+    public override void move_to(int newx, int newy)
     {
-        Debug.Log("Moving from " + x + y + " to " + endpos);
+        //Debug.Log("Moving from " + x + y + " to " + endpos);
         //gamemap from dispay, startpos is x and y only give endpos
 
         List<Vector2Int> path = NeolithianRev.Utility.MovementAlgos.GetPath(
-            ConvertToTileTypeArray_helper(Controller_GameData.GameMap),
+            ConvertToTileTypeArray_helper(Controller.GameMap),
             new Vector2Int(x, y),
-            endpos,
+            new Vector2Int(newx, newy),
             movePoints,
             Entity_Stats.Settler_Movement_Costs
         );
@@ -82,11 +74,11 @@ public class Settler_Unit : Game_Entity
         {
             // Here you can implement logic to animate path
             int totalCost = 0;
-            TileType[][] tileTypeMap = ConvertToTileTypeArray_helper(Controller_GameData.GameMap);
+            Terrain[][] tileTypeMap = ConvertToTileTypeArray_helper(Controller.GameMap);
             for (int i = 1; i < path.Count; i++) // skip start tile
             {
                 Vector2Int pos = path[i];
-                TileType tileType = tileTypeMap[pos.x][pos.y];
+                Terrain tileType = tileTypeMap[pos.x][pos.y];
                 if (Entity_Stats.Settler_Movement_Costs.TryGetValue(tileType, out int cost))
                 {
                     totalCost += cost;
@@ -107,17 +99,17 @@ public class Settler_Unit : Game_Entity
         }
     }
 
-    private static TileType[][] ConvertToTileTypeArray_helper(HexTile_Info[][] hexMap)
+    private static Terrain[][] ConvertToTileTypeArray_helper(HexTile_Info[][] hexMap)
     {
         int width = hexMap.Length;
-        TileType[][] result = new TileType[width][];
+        Terrain[][] result = new Terrain[width][];
         for (int x = 0; x < width; x++)
         {
             int height = hexMap[x].Length;
-            result[x] = new TileType[height];
+            result[x] = new Terrain[height];
             for (int y = 0; y < height; y++)
             {
-                result[x][y] = hexMap[x][y].type;
+                result[x][y] = hexMap[x][y].terrain;
             }
         }
         return result;

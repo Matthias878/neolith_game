@@ -1,25 +1,87 @@
+using System.Collections.Generic;
+using System;
+using System.Linq;
+using System.Collections;
+using Newtonsoft.Json;
+using System.IO;
+using UnityEngine;
+
+[JsonObject(MemberSerialization.Fields)]
+
 public class Culture
 {
-    private string name;
+    public string name;
+
+    public string nominativPlural;
     private enum Housing { Communal, Individual }
     private Housing housingPreference; //Start with communal
     private enum Architectural_Style { Round, Rectangular }
     private Architectural_Style architecturalPreference; //?
 
-    public Technology[] technologies = new Technology[0];
+    //neolithisierungszentrum oder nicht?
+    //lunar oder sonnen kalender
+    //viele krankheiten von tieren
+    //Jäger und sammler hatten so einen überfluss, dass sie nicht mehr ziehen mussten
+    //immer wieder hungersnöte, aber langfristiges wachstum
+    //aufgabe einer Siedlung und wieder normadisch nicht demotivierend?
+    //halbsesshafte Lebensweise
+    //Viehzucht sehr wichtig und auch noch jagen und sammeln
+
+
+    //Gartenbau
+    //Wanderfeldbau
+
+    //sesshaft erst als jäger und sammler //tell player background information
+
+    public List<Knowledge> knownKnowledge = new List<Knowledge>();
+
+    private List<Knowledge> allKnowledge = new List<Knowledge>() {
+        new Knowledge("Fire"),
+        new Knowledge("Pflanzenanbau"), //wikipedia: Seit den 1960er Jahren wird angenommen, dass steinzeitlichen Wildbeutern aufgrund ihres traditionellen Wissens seit jeher bekannt war, wie man Pflanzen gezielt vermehren und nutzen kann. Bis zum Neolithikum gab es jedoch offenbar keinen Grund, dies zu tun.[2] Diese These steht auch in Zusammenhang mit der schnellen Wiederverbreitung der Hasel in Europa nach der Eiszeit.[6]
+        new Knowledge("Gartenbau"),
+        new Knowledge("Wanderfeldbau"),
+        new Knowledge("Tierhaltung"),
+        new Knowledge("Werkzeuge"),
+        new Knowledge("Cooking"),
+        new Knowledge("Gathering"),
+        new Knowledge("Fishing"),
+        new Knowledge("Foraging"),
+        new Knowledge("Trapping"),
+        new Knowledge("Hunting"),
+        new Knowledge("Ackerbau"),
+        new Knowledge("Keramik"),
+        new Knowledge("Textilien"),
+         new Knowledge("Steinbearbeitung"),
+         new Knowledge("Rad"),
+         new Knowledge("Bergbau & Metallurgie"),
+         new Knowledge("Mahlsteine"),
+         new Knowledge("Backöfen"),
+         new Knowledge("Flöße"),
+         new Knowledge("Kalender"),
+         new Knowledge("bessere Waffen"),
+         new Knowledge("Metallhandwerk"),
+         new Knowledge("Schrift"),
+         new Knowledge("Vorratswirtschaft"),
+         new Knowledge("Tauschhandel"),
+         new Knowledge("Arbeitsteilung"),
+         new Knowledge("befestigte Siedlungen")
+    };
 
     public Culture(string name)
     {
         // Initialize culture with a name and default preferences
         this.name = name;
+        nominativPlural = name + "s"; // Simple pluralization, can be improved
         this.housingPreference = Housing.Communal; // Default to communal housing
         this.architecturalPreference = Architectural_Style.Round; // Default architectural style
+        knownKnowledge.Add(allKnowledge[0]); // Start with knowledge of fire
+        knownKnowledge.Add(allKnowledge[1]); // Start with knowledge of planting
     }
 
     public override string ToString()
     {
         // Return a string representation of the culture
-        return $"Culture: {name}, Housing: {housingPreference}, Architecture: {architecturalPreference} The Culture of the {name} has a long way to go.";
+        return $"Culture: {name}, Housing: {housingPreference}, Architecture: {architecturalPreference}. The Culture of the {name} has a long way to go.";
     }
 }
 
