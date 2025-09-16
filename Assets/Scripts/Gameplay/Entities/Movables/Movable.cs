@@ -2,38 +2,23 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-public class Settler_Unit : Game_Entity
+public abstract class Movable : Game_Entity
 {
-    private int movePoints;
-    protected int health;
-    private int maxMovePoints = 6; // Default move points for a settler
-    public Settler_Unit(int x, int y, Person leader) : base(1, x, y, leader)
+    public int movePoints;
+    public int health;
+    public int maxMovePoints;
+
+    public Culture culture; //culture of the unit, could be different from leader ???
+    public Movable(int classId, int x, int y, Person leader) : base(classId, x, y, leader)
     {
-        this.movePoints = maxMovePoints;
-        this.health = 100;
+        // ismovable = true;
     }
 
-    public override void presentActions_and_Data()
-    {
+    //public abstract void move_to(int x, int y); // Move to a new position endpos //only moveables
+    //public abstract void move_starter(); //only movables
 
-        Button newButton = Controller_GameData.inputManagerController.addUIButton();
-        newButton.GetComponentInChildren<TMP_Text>().text = "Click this button to found a new settlement.";
-        newButton.onClick.AddListener(() => Settlement.foundSettlement(x, y, this.leader));
 
-        
-        Button newButtontwo = Controller_GameData.inputManagerController.addUIButton();
-        newButtontwo.GetComponentInChildren<TMP_Text>().text = "fortify here.";
-        newButtontwo.onClick.AddListener(() => fortify());
-
-    }
-
-    private void fortify()
-    {
-        Controller_GameData.inputManagerController.SetGameState(Input_Manager_State.Settlement_Management_Layer);
-        Debug.Log("Fortifying at position: " + x + ", " + y);
-    }
-
-    public override void move_starter()
+    public void move_starter()
     {
 
         HashSet<Vector2Int> reachableTiles = NeolithianRev.Utility.MovementAlgos.GetReachableTiles(
@@ -52,13 +37,9 @@ public class Settler_Unit : Game_Entity
 
     }
 
-    public override void Turnend()
+    public void move_to(int newx, int newy)
     {
-        movePoints = maxMovePoints; // Reset move points at the end of the turn
-    }
-
-    public override void move_to(int newx, int newy)
-    {
+        
         //Debug.Log("Moving from " + x + y + " to " + endpos);
         //gamemap from dispay, startpos is x and y only give endpos
 
@@ -99,7 +80,7 @@ public class Settler_Unit : Game_Entity
         }
     }
 
-    private static Terrain[][] ConvertToTileTypeArray_helper(HexTile_Info[][] hexMap)
+    public static Terrain[][] ConvertToTileTypeArray_helper(HexTile_Info[][] hexMap)
     {
         int width = hexMap.Length;
         Terrain[][] result = new Terrain[width][];
@@ -115,8 +96,4 @@ public class Settler_Unit : Game_Entity
         return result;
     }
 
-    private void buildSettlement()
-    {
-        // Implement settlement building logic here
-    }
 }

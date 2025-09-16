@@ -4,9 +4,65 @@ using UnityEngine;
 public class My_TilemapRenderer : MonoBehaviour
 {
     public Transform tileParent;
-    public float tileWidth = 1f; //1f;
-    public float tileHeight = 0.866f; // flat-top hexes
-
+    public static float tileWidth = 1f; //1f;
+    public static float tileHeight = 0.866f; // flat-top hexes
+    // Add at the top of your class
+    public Material outlineMaterialTemplate; // assign a material using your SpriteOutline shader in the inspector
+    
+    // Removes outlines from all tile, entity, and settlement GameObjects
+    public void RemoveAllOutlines()
+    {
+        foreach (var go in _tileGO.Values)
+            ResetSpriteRenderer(go);
+    
+        foreach (var go in _entityGO.Values)
+            ResetSpriteRenderer(go);
+    
+        foreach (var go in _settlementGO.Values)
+            ResetSpriteRenderer(go);
+    }
+    
+    private void ResetSpriteRenderer(GameObject go)
+    {
+        if (go == null) return;
+        var sr = go.GetComponent<SpriteRenderer>();
+        if (sr != null)
+            sr.material = null; // revert to default
+    }
+    
+    // Outlines a tile at specific x, y coordinates with given color and size
+    public void OutlineTileAt(int x, int y, Color color, float outlineSize = 1f)
+    {
+        if (x < 0 || y < 0 || x >= _tileGO.Count) return;
+    
+        foreach (var kv in _tileGO)
+        {
+            var tile = kv.Key;
+            var go = kv.Value;
+    
+            // Compare with coordinates in GameObject name (or your HexTile_Info stores x/y)
+            if (go.name.Contains($"X_Coord_is{x}_AND_Y_Coord_is{y}"))
+            {
+                ApplyOutline(go, color, outlineSize);
+                break;
+            }
+        }
+    }
+    
+    private void ApplyOutline(GameObject go, Color color, float outlineSize)
+    {
+        if (go == null || outlineMaterialTemplate == null) return;
+    
+        var sr = go.GetComponent<SpriteRenderer>();
+        if (sr == null) return;
+    
+        // Create a copy of the outline material so different tiles can have different colors
+        Material mat = new Material(outlineMaterialTemplate);
+        mat.SetColor("_OutlineColor", color);
+        mat.SetFloat("_OutlineSize", outlineSize);
+        sr.material = mat;
+    }
+    
     // Registries
     private readonly Dictionary<HexTile_Info, GameObject> _tileGO = new();
     private readonly Dictionary<int, GameObject> _entityGO = new();
@@ -95,7 +151,12 @@ public class My_TilemapRenderer : MonoBehaviour
         foreach (var entity in movables)
         {
             if (entity == null) continue;
-            if (entity.neverRender == true) continue;
+            if (entity.neverRender == true)
+            {
+                if (_entityGO.TryGetValue(entity.id, out var existingGO) && existingGO) DestroySafe(existingGO);
+                _entityGO.Remove(entity.id);
+                continue;
+            }
 
             if (_entityGO.TryGetValue(entity.id, out var go) && go) DestroySafe(go);
             _entityGO.Remove(entity.id);
@@ -148,7 +209,7 @@ public class My_TilemapRenderer : MonoBehaviour
         foreach (var settlement in settlements)
         {
             if (settlement == null) continue;
-            
+
             if (_settlementGO.TryGetValue(settlement.id, out var go) && go) DestroySafe(go);
             _settlementGO.Remove(settlement.id);
 
@@ -208,6 +269,15 @@ public class My_TilemapRenderer : MonoBehaviour
         Object.Destroy(go);
 #endif
     }
+    
+    public static (float,float) TileToWorld(int x, int y)
+    {
+    float xOffset = tileWidth * 0.75f * x;
+    float yOffset = tileHeight * y + (x % 2 == 0 ? 0 : tileHeight / 2f);
+
+    return (xOffset, yOffset);
+    }
+
 }
 
 public class HexTileComponent : MonoBehaviour { public HexTile_Info hexTileInfo; }

@@ -13,7 +13,7 @@ public class Clan //clans are all pops, indivual, entities Leaders sworn to the 
 
     //private bool settled;
 
-    public Clan(string name, Person leader)
+    public Clan(Person leader)
     {
         //this.name = name;
         //this.culture = culture;

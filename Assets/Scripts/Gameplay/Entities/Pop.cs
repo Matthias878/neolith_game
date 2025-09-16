@@ -26,10 +26,6 @@ public class Pop : Game_Entity
         this.allPositions.Add((position, 10)); //starting position and size
     }
 
-    public override void move_starter() { Debug.Log("Error pops should not have move logic."); }
-
-    public override void move_to(int x, int y) { Debug.Log("Error pops should not have move logic."); }
-
     public override void presentActions_and_Data() { Debug.Log("Error pops should not have Actions or Data to present."); }
 
     public int getSizeAtPosition(Vector2 position)

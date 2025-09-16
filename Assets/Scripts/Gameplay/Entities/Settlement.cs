@@ -200,13 +200,13 @@ public class Settlement : Game_Entity
             if (e + d > c)
             {
                 foodstoredcurrently = c;
-                Debug.Log("The settlement at x:" + x + " y:" + y + " is has excess production of " + (e) + ". but has only " + (c - d) + " food storage left.");
+                //Debug.Log("The settlement at x:" + x + " y:" + y + " is has excess production of " + (e) + ". but has only " + (c - d) + " food storage left.");
                 return c - d;
             }
             else
             {
                 foodstoredcurrently += e;
-                Debug.Log("The settlement at x:" + x + " y:" + y + " is storing " + (e) + " food.");
+                //Debug.Log("The settlement at x:" + x + " y:" + y + " is storing " + (e) + " food.");
                 return e;
 
             }
@@ -287,16 +287,6 @@ public class Settlement : Game_Entity
             return "this settlement does not have enough resources to build houses on its own, it must import them.";
         }
     } 
-
-    public override void move_to(int x, int y)
-    {
-        // TODO: Implement move with Vector2Int for Settlement
-    }
-
-    public override void move_starter()
-    {
-        // TODO: Implement move for Settlement
-    }
 
     public override void Turnend()
     {

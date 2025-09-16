@@ -41,35 +41,22 @@ public class Clan_Overview : MonoBehaviour
         List<Person> oldLeaders = new List<Person>();
         foreach (var clan in clansList)
         {
-            if (clan.Leader.swornChief == null)
+            if (clan.Leader.leader == null)
             {
                 oldLeaders.Add(clan.Leader);
             }
         }
 
         Game_Entity[] movables = Controller.movables;
-        Person[] people = Controller.people;
-
         List<Person> newLeaders = new List<Person>();
 
-        if (movables != null)
+        if (movables != null) //bug if settlement or something lacks leader
         {
             foreach (var entity in movables)
             {
-                if (entity.leader.swornChief == null && !newLeaders.Contains(entity.leader))
+                if (entity.leader == null && !newLeaders.Contains(entity))
                 {
                     newLeaders.Add(entity.leader);
-                }
-            }
-        }
-
-        if (people != null)
-        {
-            foreach (var entity in people)
-            {
-                if (entity.swornChief == null && !newLeaders.Contains(entity))
-                {
-                    newLeaders.Add(entity); //Wanderers not clanleaders?
                 }
             }
         }
@@ -102,12 +89,12 @@ public class Clan_Overview : MonoBehaviour
 
         foreach (var person in becameLeaders)
         {
-            clansList.Add(new Clan(person.name + "'s Clan", person));
+            clansList.Add(new Clan(person));
         }
 
         foreach (var person in stillLeaders)
         {
-            clansList.Add(new Clan(person.name + "'s Clan", person));
+            clansList.Add(new Clan(person));
         }
 
         foreach (Transform child in clanCanvas.transform)

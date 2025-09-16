@@ -14,10 +14,11 @@ public class Controller : MonoBehaviour
     public static HexTile_Info[][] GameMap; public static HexTile_Info[][] GameMap_toremove;
 
     //TODO INTEGRATE movables and settlements
-    public static Game_Entity[] movables; public static Game_Entity[] movables_toremove; private static bool maphasbeenset = false;
+    public static Game_Entity[] movables = new Game_Entity[0]; public static Game_Entity[] movables_toremove = new Game_Entity[0]; private static bool maphasbeenset = false;
     //public Settlement[] settlements; public Settlement[] settlements_toremove;
 
-    public static Person[] people; public static Person[] players;
+    //public static Person[] people; 
+    public static Movable[] players;
 
     public My_TilemapRenderer tilemapRenderer;
 
@@ -93,6 +94,11 @@ public class Controller : MonoBehaviour
         }
         else
         {
+            if (movables.Contains(entity))
+            {
+                Debug.LogWarning("Entity " + entity.type + " " + entity.id + ", " + entity.x + ", " + entity.y + " already exists in movables array.");
+                return;
+            }
             Array.Resize(ref movables, movables.Length + 1);
             movables[movables.Length - 1] = entity;
         }
@@ -109,27 +115,15 @@ public class Controller : MonoBehaviour
         maphasbeenset = true;
     }
 
-    public void AddPerson(Person person)
-    {
-        if (people == null)
-        {
-            people = new Person[] { person };
-        }
-        else
-        {
-            Array.Resize(ref people, people.Length + 1);
-            people[people.Length - 1] = person;
-        }
-    }
 
-    public void SetPlayers(Person[] players)
+    public void SetPlayers(Movable[] players)
     {
         Controller.players = players;
         foreach (var player in players)
         {
-            if (player != null && people != null && !people.Contains(player))
+            if (player != null && movables != null && !movables.Contains(player))
             {
-                AddPerson(player);
+                AddEntity(player);
             }
         }
     }
@@ -138,7 +132,7 @@ public class Controller : MonoBehaviour
     {
         isPaused = true;
         tilemapRenderer.StopRendering(GameMap_toremove, movables_toremove);
-        SaveData state = new SaveData(GameMap, movables, people, players);
+        SaveData state = new SaveData(GameMap, movables, players);
         SaveGame.SaveCurrentGame(state, path);
         isPaused = false;
     }
@@ -146,6 +140,12 @@ public class Controller : MonoBehaviour
     public static SaveData LoadGame(string path)
     {
         return SaveGame.LoadGame(path);
+    }
+
+    public void Outline()
+    {
+        //tilemapRenderer.RemoveAllOutlines();
+        tilemapRenderer.OutlineTileAt(players[0].x, players[0].y, Color.red, 25f);
     }
 
 }

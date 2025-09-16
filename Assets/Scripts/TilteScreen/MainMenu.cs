@@ -9,6 +9,8 @@ public class MainMenu : MonoBehaviour
     private GameObject mainMenu;
     private GameObject settingsMenu;
     private GameObject feedbackMenu; //Set in the Awake function//Set in the Awake function all canvases
+    private GameObject createMenu;
+    private GameObject creditsMenu; 
 
 
 
@@ -19,10 +21,12 @@ public class MainMenu : MonoBehaviour
         loadMenu.SetActive(false);
         mainMenu = GameObject.Find("Main_Menu");
         //mainMenu.SetActive(false);
-        //settingsMenu = GameObject.Find("Settings_Menu");
-        //settingsMenu.SetActive(false);
-        //feedbackMenu = GameObject.Find("Feedback_Menu");
-        //feedbackMenu.SetActive(false);
+        settingsMenu = GameObject.Find("Settings_Menu");
+        settingsMenu.SetActive(false);
+        createMenu = GameObject.Find("Create_Menu");
+        createMenu.SetActive(false);
+        creditsMenu = GameObject.Find("Credits_Window");
+        creditsMenu.SetActive(false);
     }
 
 
@@ -38,8 +42,36 @@ public class MainMenu : MonoBehaviour
         mainMenu.SetActive(true);
     }
 
+    public void OpenCreateMenu()
+    {
+        mainMenu.SetActive(false);
+        createMenu.SetActive(true);
+    }
 
-    public void PlayGame()
+    public void CloseCreateMenu()
+    {
+        createMenu.SetActive(false);
+        mainMenu.SetActive(true);
+    }
+
+    public void OpenSettingsMenu()
+    {
+        mainMenu.SetActive(false);
+        settingsMenu.SetActive(true);
+    }
+
+    public void CloseSettingsMenu()
+    {
+        settingsMenu.SetActive(false);
+        mainMenu.SetActive(true);
+    }
+
+    public void OpenFeedback()
+    {
+        Application.OpenURL("https://forums.wesnoth.org/viewtopic.php?t=57032");
+    }
+
+    public void PlayTutorial()
     {
         StartupGame.entryMode = 0;
         StartupGame.savePath = "";
@@ -55,14 +87,16 @@ public class MainMenu : MonoBehaviour
 
     }
 
-    public void OpenSettings()
-    {
-        // Open settings menu
-    }
-
     public void OpenCredits()
     {
-        // Open credits menu
+        mainMenu.SetActive(false);
+        creditsMenu.SetActive(true);
+    }
+
+    public void CloseCredits()
+    {
+        creditsMenu.SetActive(false);
+        mainMenu.SetActive(true);
     }
 
     public void OpenHelp()
@@ -74,11 +108,6 @@ public class MainMenu : MonoBehaviour
     {
         // Open about menu
     }
-
-    public void OpenFeedback()
-    {
-        // Open feedback menu
-    }      
 
     public void OpenPrivacyPolicy()
     {
@@ -110,7 +139,6 @@ public class MainMenu : MonoBehaviour
     public void QuitGame()
     {
         Application.Quit();
-        // In editor
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #endif

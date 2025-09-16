@@ -1,17 +1,16 @@
 using UnityEngine;
 public abstract class Game_Entity // Base class for all game entities (units, buildings, etc.)
 {
+    //public bool isMovable = false;
     public bool haschanged_render = true;//use later for render efficiency
     public bool neverRender = false; // Flag to control rendering
     public static Controller Controller_GameData = GameObject.Find("Script_Holder_Ingame").GetComponent<Controller>();
-    private static int nextId = 1;public readonly int id; // Threadsafe
+    private static int nextId = 1; public readonly int id; // Threadsafe
     public int x; public int y; //public readonly string name;
     public readonly string type; // Type of the entity (e.g., "Settler", "Warrior")//!type name needs to match sprite name!
     //public readonly string description;
     public Person leader;
     public abstract void presentActions_and_Data(); //settle fight move build etc. add buttons 
-    public abstract void move_to(int x, int y); // Move to a new position endpos //only moveables
-    public abstract void move_starter(); //only movables
     public abstract void Turnend();
     public Game_Entity(int tt, int x, int y, Person leader)
     {
@@ -42,6 +41,21 @@ public abstract class Game_Entity // Base class for all game entities (units, bu
             this.neverRender = true;
             this.type = "Pop";
         }
+        else if (tt == 6)
+        {
+            this.type = "Person";
+        }
+        else if (tt == 7)
+        {
+            this.type = "Messenger";
+        }
+        else
+        {
+            this.type = "Unknown";
+            Debug.LogError("Unknown entity type: " + tt);
+        }
         this.id = nextId++;
     }
+    
+    //TODO abstract toInformation() when hovering over entity
 }
